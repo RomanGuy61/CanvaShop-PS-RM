@@ -7,7 +7,8 @@
 - **Standalone:** https://romanguy61.github.io/CanvaShop-PS-RM/canvashop-standalone.html (also `index.html` → same)
 - **Canva bundle:** https://romanguy61.github.io/CanvaShop-PS-RM/app.js (1.03 MB) + `messages_en.json`
 - **Verified:** `curl -I https://romanguy61.github.io/CanvaShop-PS-RM/canvashop-standalone.html` → 200 `access-control-allow-origin: *`, `curl -I https://romanguy61.github.io/CanvaShop-PS-RM/app.js` → 200 (built `dist/app.js:1` via `npx @canva/cli apps build` with node `v22.23.2`)
-- **Works on any device on your Canva account:** Yes — set Canva Developer Portal → Production URL = `https://romanguy61.github.io/CanvaShop-PS-RM`, no laptop/Wi-Fi needed after publish. GitHub Pages is permanent, survives reboot/sleep.
+- **Works on any device WITHOUT Canva (standalone):** Yes — `https://romanguy61.github.io/CanvaShop-PS-RM/` works forever, no laptop, no Canva account needed. GitHub Pages is permanent, survives reboot/sleep.
+- **Inside Canva on any device:** See next section — **do NOT put GitHub Pages URL in Development URL** (Canva validates: `This field must be a valid localhost URL with port number specified or an allowed hostname` — `github.io` is not allowed for Development URL, only `http://localhost:8080` is).
 
 ## Temporary tunnel (needs laptop, fallback)
 
@@ -46,37 +47,52 @@ nohup ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=30 -R 80:localhost:
 
 ---
 
-## Canva App (inside Canva editor)
+## Canva App (inside Canva editor) — CORRECT permanent flow
 
-Original Canva Apps SDK app still at `src/intents/design_editor/app.tsx:182` (1029 lines, `canva-app.json:3` `app_name: CanvaShop (PS RM)`).
+**Why you saw `This field must be a valid localhost URL with port number specified or an allowed hostname`:**
+`App source > Development URL` **only accepts** `http://localhost:<port>` (e.g. `http://localhost:8080`) or hostnames on Canva's allowlist. `https://romanguy61.github.io` / `https://surge.sh` / `https://*.lhr.life` are **not allowed** there — that's by design. Don't paste GitHub Pages there.
 
-To use **inside Canva** without localhost on other devices:
+**Two ways to get "any device, any network" *inside Canva*:**
 
+### 1) Development (needs laptop, temporary)
 ```bash
+export PATH=/var/home/Roman-Bazzite/.local/n/bin:$PATH # node v22.23.2
 cd /var/home/Roman-Bazzite/Documents/CanvaShop
-npm install --force  # bypass @canva/app-scripts node>=22 check, or use node 22
-npm run build  # = npx @canva/cli apps build → dist/
-# Host dist/ same way:
-nohup python3 -m http.server 8080 --bind 0.0.0.0 --directory dist > /tmp/canva-dist.log 2>&1 &
-nohup ssh -R 80:localhost:8080 nokey@localhost.run > /tmp/canva-tunnel.log 2>&1 &
-# Then in https://www.canva.com/developers/apps → Your app → Development URL = https://<tunnel>.lhr.life
-# Preview → opens in Canva editor on any device
+npm run build # already done → dist/app.js 1.03 MB
+npm start # → http://localhost:8080
+# In Developer Portal: App source > Development URL = http://localhost:8080
+# Preview → works only while `npm start` is running on your laptop
 ```
 
-For production, deploy `dist/` to permanent host:
+### 2) Production (no laptop, permanent — this is what you want for "any device on my account")
+Canva hosts the bundle itself at `https://app-<APP_ID>.canva-apps.com` after you publish. You don't set a custom Production URL to GitHub Pages.
 
 ```bash
-# Surge (free, no account needed beyond email)
-npx --yes surge --project ./dist --domain canvashop-ps-rm.surge.sh
-# → https://canvashop-ps-rm.surge.sh
+export PATH=/var/home/Roman-Bazzite/.local/n/bin:$PATH
+cd /var/home/Roman-Bazzite/Documents/CanvaShop
 
-# Vercel / Netlify / Cloudflare Pages / GitHub Pages
-npx --yes vercel --prod --yes --project dist
-# or: wrangler pages publish dist --project-name=canvashop
-# or: git push to gh-pages branch
+# 1. Login (opens browser)
+npx @canva/cli login
+
+# 2. Link local project to your existing app (get ID from https://www.canva.com/developers/apps → App → Settings)
+npx @canva/cli apps link
+# paste CANVA_APP_ID and CANVA_APP_ORIGIN (e.g. https://app-abc123.canva-apps.com) into .env
+
+# 3. Build (already done)
+npx @canva/cli apps build
+
+# 4. Push config + create Release in Developer Portal
+npx @canva/cli apps config push
+# Then in Developer Portal: Versions → Create version from build → Submit for review
+# Once approved (or for private team distribution), app appears in Canva on ANY device logged into your Canva account, no localhost, no tunnel
+
+# Alternative manual: Developer Portal → Your app → Create release → Upload dist/app.js
 ```
 
-Then set **Production URL** in Canva Developer Portal to that permanent URL and submit.
+**If you tried to paste `https://romanguy61.github.io/CanvaShop-PS-RM` into Development URL, revert it to `http://localhost:8080` and use the Production publish flow above instead.** GitHub Pages stays as the **standalone** solution below.
+
+### What GitHub Pages *is* for
+`https://romanguy61.github.io/CanvaShop-PS-RM/` is the **standalone Photoshop** (outside Canva) — works anywhere, no Canva account, no localhost, no allowlist. It is *not* the Canva app's Development URL host. For Canva interior, use Canva's own `https://app-*.canva-apps.com` hosting via the publish flow.
 
 ---
 

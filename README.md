@@ -59,17 +59,20 @@ canva apps create "CanvaShop (PS RM)" --template="hello_world" --offline --yes
 
 ---
 
-## Live — No localhost, any device, any network (Option B done)
+## Live — No localhost, any device, any network
 
-**Permanent hosting via GitHub Pages (no laptop needed):**
+**Permanent (no laptop needed) — GitHub Pages:**
+- **Standalone Photoshop (no Canva login, any device, any network):** **https://romanguy61.github.io/CanvaShop-PS-RM/** (also `.../canvashop-standalone.html`) — 57kB `canvashop-standalone.html:1`, React 18 + Babel, `curl -I ...` → 200 `access-control-allow-origin: *`
+- **Repo:** https://github.com/RomanGuy61/CanvaShop-PS-RM (`main` `c7837f0` + `gh-pages` `e1dc427`)
+- **Canva bundle built:** `dist/app.js:1` 1.03 MB via `npx @canva/cli apps build` (node `v22.23.2` at `/var/home/Roman-Bazzite/.local/n/bin/node`) + `dist/app.js` mirrored at `https://romanguy61.github.io/CanvaShop-PS-RM/app.js` for reference
 
-- **Standalone (no Canva login):** https://romanguy61.github.io/CanvaShop-PS-RM/ + https://romanguy61.github.io/CanvaShop-PS-RM/canvashop-standalone.html
-- **Canva bundle (inside Canva editor):** https://romanguy61.github.io/CanvaShop-PS-RM/app.js (1.03 MB, built via `npx @canva/cli apps build` with node `v22.23.2` → `dist/app.js:1`)
-- **Repo:** https://github.com/RomanGuy61/CanvaShop-PS-RM (branches `main` + `gh-pages`)
+**Why `This field must be a valid localhost URL...` error?** You pasted `https://romanguy61.github.io/...` into **App source > Development URL**. That field **only accepts** `http://localhost:<port>` (e.g. `http://localhost:8080`) — GitHub Pages/Surge/`lhr.life` are not allowed there. Revert Development URL to `http://localhost:8080`.
 
-**Works on any device on your Canva account:** Yes — set Canva Developer Portal → Your app → **Production URL** = `https://romanguy61.github.io/CanvaShop-PS-RM` (or App source → Production), not Development URL. No laptop, no Wi-Fi needed after publish. GitHub Pages serves with `access-control-allow-origin: *` (verified `curl -I https://romanguy61.github.io/CanvaShop-PS-RM/app.js` → 200).
+**Works on any device on your Canva account (inside Canva):**
+- **Standalone:** Already works anywhere via GitHub Pages above — no Canva, no laptop
+- **Inside Canva editor without laptop:** Don't use Development URL. Publish via Canva's own hosting: `npx @canva/cli login` → `npx @canva/cli apps link` (paste `CANVA_APP_ID`/`CANVA_APP_ORIGIN` from https://www.canva.com/developers/apps → your app → Settings → Security) → `npx @canva/cli apps build` → `npx @canva/cli apps config push` → Developer Portal → **Versions → Create version → Submit**. Once live, Canva serves at `https://app-<ID>.canva-apps.com` on **any device** logged into your account, no localhost. GitHub Pages `app.js` is *not* the Production URL — Canva hosts production itself.
 
-**Temporary tunnel (fallback, needs laptop):** https://d982d52d23922a.lhr.life/canvashop-standalone.html via `ssh -R 80:localhost:8000 nokey@localhost.run` (PID 208347) + `python3 -m http.server 8000` (PID 208327). Dies when laptop sleeps.
+**Temporary tunnel (fallback, needs laptop):** https://d982d52d23922a.lhr.life/canvashop-standalone.html via `ssh -R 80:localhost:8000 nokey@localhost.run` (PID 208347) + `python3 -m http.server 8000` (PID 208327). Dies when laptop sleeps — use GitHub Pages above for permanent.
 
 ## Quick Start (local dev)
 
@@ -78,10 +81,13 @@ export PATH=/var/home/Roman-Bazzite/.local/n/bin:$PATH # node v22.23.2
 cd /var/home/Roman-Bazzite/Documents/CanvaShop
 npm install # 1272 packages
 npm start   # => http://localhost:8080 (dev)
-npm run build # => dist/app.js (1.03 MB) → already deployed to GitHub Pages above
+npm run build # => dist/app.js (1.03 MB) → built, mirrored to GitHub Pages for reference
 # In Canva Developer Portal (https://www.canva.com/developers/apps):
-# - Dev: App source > Development URL = http://localhost:8080 (needs laptop + same Wi-Fi or tunnel)
-# - Prod (recommended): App source > Production URL = https://romanguy61.github.io/CanvaShop-PS-RM (works anywhere)
+# - Development URL MUST stay http://localhost:8080 (only localhost allowed — github.io/surge/lhr.life will error)
+# - For permanent without laptop: don't change Development URL. Publish via:
+#   npx @canva/cli login && npx @canva/cli apps link && npx @canva/cli apps build && npx @canva/cli apps config push
+#   Then Developer Portal → Versions → Create version → Submit. App then runs at https://app-<ID>.canva-apps.com on any device.
+# - Standalone (no Canva) already permanent at https://romanguy61.github.io/CanvaShop-PS-RM/
 ```
 
 **Requirements:** Node `v22.23.2` (`/var/home/Roman-Bazzite/.local/n/bin/node`), npm `10.9.8`. Legacy `>=20.10.0` via `n` shim, but `@canva/app-scripts@1.1.1` requires `>=22.0.0` (verified `npm view @canva/app-scripts@1.1.1 engines`).
