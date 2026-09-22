@@ -59,21 +59,32 @@ canva apps create "CanvaShop (PS RM)" --template="hello_world" --offline --yes
 
 ---
 
-## Quick Start
+## Live — No localhost, any device, any network (Option B done)
+
+**Permanent hosting via GitHub Pages (no laptop needed):**
+
+- **Standalone (no Canva login):** https://romanguy61.github.io/CanvaShop-PS-RM/ + https://romanguy61.github.io/CanvaShop-PS-RM/canvashop-standalone.html
+- **Canva bundle (inside Canva editor):** https://romanguy61.github.io/CanvaShop-PS-RM/app.js (1.03 MB, built via `npx @canva/cli apps build` with node `v22.23.2` → `dist/app.js:1`)
+- **Repo:** https://github.com/RomanGuy61/CanvaShop-PS-RM (branches `main` + `gh-pages`)
+
+**Works on any device on your Canva account:** Yes — set Canva Developer Portal → Your app → **Production URL** = `https://romanguy61.github.io/CanvaShop-PS-RM` (or App source → Production), not Development URL. No laptop, no Wi-Fi needed after publish. GitHub Pages serves with `access-control-allow-origin: *` (verified `curl -I https://romanguy61.github.io/CanvaShop-PS-RM/app.js` → 200).
+
+**Temporary tunnel (fallback, needs laptop):** https://d982d52d23922a.lhr.life/canvashop-standalone.html via `ssh -R 80:localhost:8000 nokey@localhost.run` (PID 208347) + `python3 -m http.server 8000` (PID 208327). Dies when laptop sleeps.
+
+## Quick Start (local dev)
 
 ```bash
+export PATH=/var/home/Roman-Bazzite/.local/n/bin:$PATH # node v22.23.2
 cd /var/home/Roman-Bazzite/Documents/CanvaShop
-npm install
-npm start
-# => http://localhost:8080
-
+npm install # 1272 packages
+npm start   # => http://localhost:8080 (dev)
+npm run build # => dist/app.js (1.03 MB) → already deployed to GitHub Pages above
 # In Canva Developer Portal (https://www.canva.com/developers/apps):
-# - Create app "CanvaShop (PS RM)"
-# - App source > Development URL = http://localhost:8080
-# - Preview -> editor opens with app in side panel
+# - Dev: App source > Development URL = http://localhost:8080 (needs laptop + same Wi-Fi or tunnel)
+# - Prod (recommended): App source > Production URL = https://romanguy61.github.io/CanvaShop-PS-RM (works anywhere)
 ```
 
-**Requirements:** Node `>=20.10.0` (engines field relaxed from 22||24), npm 10+.
+**Requirements:** Node `v22.23.2` (`/var/home/Roman-Bazzite/.local/n/bin/node`), npm `10.9.8`. Legacy `>=20.10.0` via `n` shim, but `@canva/app-scripts@1.1.1` requires `>=22.0.0` (verified `npm view @canva/app-scripts@1.1.1 engines`).
 
 ---
 

@@ -1,17 +1,27 @@
 # CanvaShop (PS RM) — Hosting — No localhost needed, any device, any network
 
-## Standalone (no Canva login, works everywhere)
+## Permanent (no laptop needed) — GitHub Pages (Option B done)
+
+- **Repo:** https://github.com/RomanGuy61/CanvaShop-PS-RM (main + gh-pages)
+- **Pages URL:** https://romanguy61.github.io/CanvaShop-PS-RM/
+- **Standalone:** https://romanguy61.github.io/CanvaShop-PS-RM/canvashop-standalone.html (also `index.html` → same)
+- **Canva bundle:** https://romanguy61.github.io/CanvaShop-PS-RM/app.js (1.03 MB) + `messages_en.json`
+- **Verified:** `curl -I https://romanguy61.github.io/CanvaShop-PS-RM/canvashop-standalone.html` → 200 `access-control-allow-origin: *`, `curl -I https://romanguy61.github.io/CanvaShop-PS-RM/app.js` → 200 (built `dist/app.js:1` via `npx @canva/cli apps build` with node `v22.23.2`)
+- **Works on any device on your Canva account:** Yes — set Canva Developer Portal → Production URL = `https://romanguy61.github.io/CanvaShop-PS-RM`, no laptop/Wi-Fi needed after publish. GitHub Pages is permanent, survives reboot/sleep.
+
+## Temporary tunnel (needs laptop, fallback)
 
 A single-file Photoshop remake at `canvashop-standalone.html` (57kB) that runs with React + Babel via CDN.
 
-### Live URLs (already put)
+### Live URLs (temporary, needs laptop)
 
 - **Local (this machine):** http://localhost:8000/canvashop-standalone.html
 - **LAN (same Wi-Fi, any phone/tablet/PC):** http://192.168.1.71:8000/canvashop-standalone.html
-- **Internet (any network, any device world-wide):** https://d982d52d23922a.lhr.life/canvashop-standalone.html
+- **Internet (any network, any device world-wide, temporary):** https://d982d52d23922a.lhr.life/canvashop-standalone.html
   - Tunnel via `ssh -R 80:localhost:8000 nokey@localhost.run` (PID 208347, see `/tmp/tunnel2.log`)
   - QR code in tunnel log: open `https://d982d52d23922a.lhr.life` on mobile → scans to same URL
   - `curl -I https://d982d52d23922a.lhr.life/canvashop-standalone.html` → 200 OK, `x-backend-addr: 174.226.193.194:1529`
+  - **Dies when laptop sleeps/off/Wi-Fi off — use GitHub Pages above for permanent**
 
 **Server:** `python3 -m http.server 8000 --bind 0.0.0.0 --directory /var/home/Roman-Bazzite/Documents/CanvaShop` (PID 208327, `nohup`, logs `/tmp/canvashop-server.log`), listening on `0.0.0.0:8000`.
 
