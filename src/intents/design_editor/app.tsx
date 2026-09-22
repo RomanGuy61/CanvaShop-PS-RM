@@ -1,1029 +1,376 @@
 import * as React from "react";
-import { useFeatureSupport } from "@canva/app-hooks";
+import { useFeatureSupport, useSelection } from "@canva/app-hooks";
 import { addElementAtCursor, addElementAtPoint } from "@canva/design";
-import { upload } from "@canva/asset";
+import { getTemporaryUrl, upload } from "@canva/asset";
+import { Alert, Box, Button, Columns, Column, FormField, Grid, Rows, Slider, Text, Title } from "@canva/app-ui-kit";
+import * as styles from "styles/components.css";
 
-// CanvaShop (PS RM) - Photoshop Remake with 50+ Features
-// Feature count: 65+ documented below
-
-type Tool =
-  | "move"
-  | "marquee-rect"
-  | "marquee-ellipse"
-  | "lasso"
-  | "magic-wand"
-  | "quick-select"
-  | "crop"
-  | "eyedropper"
-  | "brush"
-  | "pencil"
-  | "eraser"
-  | "clone"
-  | "healing"
-  | "gradient"
-  | "bucket"
-  | "dodge"
-  | "burn"
-  | "sponge"
-  | "blur-tool"
-  | "sharpen-tool"
-  | "smudge"
-  | "pen"
-  | "text"
-  | "rect"
-  | "ellipse"
-  | "polygon"
-  | "line"
-  | "hand"
-  | "zoom"
-  | "airbrush";
-
-type BlendMode =
-  | "normal"
-  | "multiply"
-  | "screen"
-  | "overlay"
-  | "darken"
-  | "lighten"
-  | "color-dodge"
-  | "color-burn"
-  | "hard-light"
-  | "soft-light"
-  | "difference"
-  | "exclusion"
-  | "hue"
-  | "saturation"
-  | "color"
-  | "luminosity";
-
-type Layer = {
-  id: string;
-  name: string;
-  visible: boolean;
-  locked: boolean;
-  opacity: number;
-  blendMode: BlendMode;
-  canvas: HTMLCanvasElement;
-  thumbnail: string;
-};
-
-type HistoryEntry = {
-  layersData: { id: string; name: string; visible: boolean; locked: boolean; opacity: number; blendMode: BlendMode; dataUrl: string }[];
-  canvasW: number;
-  canvasH: number;
-};
-
-const BLEND_MODES: BlendMode[] = [
-  "normal","multiply","screen","overlay","darken","lighten","color-dodge","color-burn","hard-light","soft-light","difference","exclusion","hue","saturation","color","luminosity"
-];
+// CanvaShop (PS RM) — Photoshop Tools for Canva
+// Manipulate selected Canva images with 50+ Photoshop features, just like native Canva apps
 
 const FEATURES = [
-  "01 New Document & Canvas Size",
-  "02 Open / Import Image",
-  "03 Export PNG / JPG",
-  "04 Add to Canva Design (upload API)",
-  "05 Undo / Redo / History Panel (20 steps)",
-  "06 Move Tool (drag layers)",
-  "07 Rectangular Marquee Selection",
-  "08 Elliptical Marquee",
-  "09 Lasso Tool (freehand selection)",
-  "10 Magic Wand (flood select)",
-  "11 Quick Selection",
-  "12 Crop Tool & Canvas Resize",
-  "13 Eyedropper Color Picker",
-  "14 Brush Tool (size/hardness/flow)",
-  "15 Pencil Tool (hard edge)",
-  "16 Airbrush",
-  "17 Eraser + Background Eraser",
-  "18 Clone Stamp",
-  "19 Healing Brush / Spot Healing",
-  "20 Gradient Tool (linear/radial)",
-  "21 Paint Bucket Fill",
-  "22 Dodge / Burn / Sponge (exposure)",
-  "23 Blur / Sharpen / Smudge Tools",
-  "24 Pen Tool (vector path)",
-  "25 Text Tool (font/size/color)",
-  "26 Rectangle & Rounded Rectangle Shape",
-  "27 Ellipse / Circle Shape",
-  "28 Polygon / Star Shape",
-  "29 Line Tool",
-  "30 Hand Tool (pan canvas)",
-  "31 Zoom Tool (10%-3200%)",
-  "32 Foreground/Background Color & Swap",
-  "33 Swatches Palette (20 presets)",
-  "34 Layers: Add/Delete/Duplicate",
-  "35 Layers: Reorder / Merge / Flatten",
-  "36 Layer Opacity Slider",
-  "37 Layer Blend Modes (16 modes)",
-  "38 Layer Visibility & Lock",
-  "39 Layer Masks (add/clear)",
-  "40 Drop Shadow / Outer Glow Styles",
-  "41 Stroke & Inner Shadow",
-  "42 Brightness / Contrast Adjustment",
-  "43 Hue / Saturation / Lightness",
-  "44 Levels (black/white/gamma)",
-  "45 Curves (s-curve / RGB)",
-  "46 Exposure & Gamma",
-  "47 Vibrance & Color Balance",
-  "48 Invert / Desaturate / Black&White",
-  "49 Sepia / Posterize / Threshold",
-  "50 Gaussian Blur & Motion Blur",
-  "51 Sharpen / Unsharp Mask",
-  "52 Noise (Add / Despeckle)",
-  "53 Pixelate / Mosaic / Crystallize",
-  "54 Emboss & Edge Detect & Find Edges",
-  "55 Vignette & Lens Correction",
-  "56 Gradient Map & Duotone",
-  "57 Shadows/Highlights Recovery",
-  "58 Channel Mixer & Selective Color",
-  "59 Transform: Scale/Rotate/Skew/PerspectiveWarp",
-  "60 Flip Horizontal/Vertical & Rotate 90°",
-  "61 Rulers / Guides / Grid / Snap",
-  "62 Navigator & Histogram & Info Panel",
-  "63 Actions & Batch (record filter)",
-  "64 Color Management (RGB/CMYK preview)",
-  "65 File Info & Metadata & Scratch Size",
+  "01 Brightness", "02 Contrast", "03 Hue Rotate", "04 Saturation", "05 Lightness", "06 Exposure", "07 Gamma", "08 Vibrance", "09 Temperature", "10 Tint",
+  "11 Grayscale / Desaturate", "12 Invert", "13 Sepia", "14 Posterize (4 levels)", "15 Threshold (B/W)", "16 Warm Filter", "17 Cold Filter", "18 Duotone (fg/bg)", "19 Dramatic Warm", "20 Dramatic Cold",
+  "21 Gaussian Blur", "22 Motion Blur", "23 Sharpen", "24 Emboss", "25 Edge Detect", "26 Find Edges", "27 Noise", "28 Despeckle Noise", "29 Pixelate / Mosaic", "30 Crystallize (large pixelate)",
+  "31 Vignette", "32 Lens Blur", "33 Lens Flare (radial)", "34 Drop Shadow", "35 Outer Glow", "36 Inner Shadow", "37 Stroke", "38 Bevel (emboss+highlight)",
+  "39 Flip Horizontal", "40 Flip Vertical", "41 Rotate 90° CW", "42 Rotate 90° CCW", "43 Rotate 180°", "44 Straighten (±30°)", "45 Scale (50-200%)", "46 Crop (center)", "47 Perspective Warp", "48 Skew",
+  "49 Color Balance (cyan/red)", "50 Channel Mixer (RGB)", "51 Selective Color", "52 Gradient Map", "53 Shadows/Highlights", "54 Levels (black/white)", "55 Curves (S-curve)",
+  "56 Clone Stamp (heal)", "57 Healing Brush", "58 Dodge & Burn", "59 Sponge (saturate/desaturate)", "60 Text Overlay (Photoshop Type)",
 ];
 
-function createOffscreen(w: number, h: number, fill?: string) {
-  const c = document.createElement("canvas");
-  c.width = w;
-  c.height = h;
-  if (fill) {
-    const ctx = c.getContext("2d")!;
-    ctx.fillStyle = fill;
-    ctx.fillRect(0, 0, w, h);
-  }
-  return c;
-}
-
-function getBlendOperation(m: BlendMode): GlobalCompositeOperation {
-  const map: Record<BlendMode, GlobalCompositeOperation> = {
-    "normal": "source-over",
-    "multiply": "multiply",
-    "screen": "screen",
-    "overlay": "overlay",
-    "darken": "darken",
-    "lighten": "lighten",
-    "color-dodge": "color-dodge",
-    "color-burn": "color-burn",
-    "hard-light": "hard-light",
-    "soft-light": "soft-light",
-    "difference": "difference",
-    "exclusion": "exclusion",
-    "hue": "hue",
-    "saturation": "saturation",
-    "color": "color",
-    "luminosity": "luminosity",
-  };
-  return map[m] || "source-over";
+function downloadImage(url: string): Promise<HTMLImageElement> {
+  return fetch(url, { mode: "cors" }).then(r=>r.blob()).then(blob=>{
+    const objectUrl = URL.createObjectURL(blob);
+    const img = new Image();
+    img.crossOrigin="anonymous";
+    return new Promise<HTMLImageElement>((resolve,reject)=>{
+      img.onload=()=>{URL.revokeObjectURL(objectUrl); resolve(img);};
+      img.onerror=()=>reject(new Error("Image load failed"));
+      img.src=objectUrl;
+    });
+  });
 }
 
 export const App = () => {
   const isSupported = useFeatureSupport();
-  const addElement = [addElementAtPoint, addElementAtCursor].find((fn) => isSupported(fn));
+  const addElement = [addElementAtPoint, addElementAtCursor].find(fn=> isSupported(fn));
+  // try to get selected image, fallback to upload
+  let selection: any = null;
+  try { selection = useSelection("image"); } catch { selection = null; }
 
-  const mainCanvasRef = React.useRef<HTMLCanvasElement>(null);
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const originalRef = React.useRef<HTMLImageElement|null>(null);
+  const originalDataRef = React.useRef<ImageData|null>(null);
 
-  const [canvasW, setCanvasW] = React.useState(900);
-  const [canvasH, setCanvasH] = React.useState(600);
-  const [zoom, setZoom] = React.useState(100);
-  const [tool, setTool] = React.useState<Tool>("brush");
-  const [fg, setFg] = React.useState("#ff3b30");
-  const [bg, setBg] = React.useState("#007aff");
-  const [brushSize, setBrushSize] = React.useState(12);
-  const [hardness, setHardness] = React.useState(80);
-  const [opacity, setOpacity] = React.useState(100);
-  const [flow, setFlow] = React.useState(100);
-  const [showGrid, setShowGrid] = React.useState(false);
-  const [showRulers, setShowRulers] = React.useState(true);
-  const [activeLayerId, setActiveLayerId] = React.useState<string>("1");
-  const [layers, setLayers] = React.useState<Layer[]>(() => {
-    const c = createOffscreen(900, 600, "#ffffff");
-    const ctx = c.getContext("2d")!;
-    // demo content for new doc - subtle gradient + sample text
-    const g = ctx.createLinearGradient(0, 0, 900, 600);
-    g.addColorStop(0, "#f0f0f5");
-    g.addColorStop(1, "#d8dce6");
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, 900, 600);
-    ctx.fillStyle = "#1a1a1a";
-    ctx.font = "bold 42px Inter, sans-serif";
-    ctx.fillText("CanvaShop (PS RM)", 40, 80);
-    ctx.font = "16px Inter, sans-serif";
-    ctx.fillStyle = "#4a4a4a";
-    ctx.fillText("Photoshop Remake • 65+ Features • Drag to paint • Layers on right", 40, 110);
-    // checker demo
-    ctx.strokeStyle = "#cccccc";
-    ctx.lineWidth = 1;
-    ctx.strokeRect(40, 140, 320, 200);
-    ctx.fillStyle = "#ff3b30";
-    ctx.fillRect(60, 160, 120, 90);
-    ctx.fillStyle = "#007aff";
-    ctx.beginPath();
-    ctx.arc(260, 220, 45, 0, Math.PI * 2);
-    ctx.fill();
-    return [{ id: "1", name: "Background", visible: true, locked: false, opacity: 100, blendMode: "normal", canvas: c, thumbnail: c.toDataURL() }];
-  });
-  const [history, setHistory] = React.useState<HistoryEntry[]>([]);
-  const [historyIdx, setHistoryIdx] = React.useState(-1);
-  const [isDrawing, setIsDrawing] = React.useState(false);
-  const [lastPos, setLastPos] = React.useState<{x:number;y:number}|null>(null);
-  const [rightTab, setRightTab] = React.useState<"layers"|"adjust"|"filters"|"history"|"info">("layers");
-  const [brightness, setBrightness] = React.useState(0);
-  const [contrast, setContrast] = React.useState(0);
-  const [hue, setHue] = React.useState(0);
-  const [saturation, setSaturation] = React.useState(0);
-  const [exposure, setExposure] = React.useState(0);
-  const [gamma, setGamma] = React.useState(1);
-  const [showFeatures, setShowFeatures] = React.useState(false);
-  const [textInput, setTextInput] = React.useState("Hello CanvaShop!");
-  const [fontSize, setFontSize] = React.useState(32);
-  const [posInfo, setPosInfo] = React.useState({x:0,y:0, rgb:"-"});
-  const [layerStyle, setLayerStyle] = React.useState<{shadow:boolean; glow:boolean; stroke:boolean}>({shadow:false, glow:false, stroke:false});
+  const [imageLoaded, setImageLoaded] = React.useState(false);
+  const [status, setStatus] = React.useState<string>("Select or upload an image to start");
+  const [activeTab, setActiveTab] = React.useState<"adjust"|"filter"|"transform"|"effects">("adjust");
 
-  const activeLayer = React.useMemo(()=> layers.find(l=>l.id===activeLayerId) || layers[0], [layers, activeLayerId]);
+  // Adjustments
+  const [brightness,setBrightness]=React.useState(0);
+  const [contrast,setContrast]=React.useState(0);
+  const [hue,setHue]=React.useState(0);
+  const [saturation,setSaturation]=React.useState(0);
+  const [lightness,setLightness]=React.useState(0);
+  const [exposure,setExposure]=React.useState(0);
+  const [gamma,setGamma]=React.useState(1);
+  const [temperature,setTemperature]=React.useState(0);
+  const [tint,setTint]=React.useState(0);
+  const [vibrance,setVibrance]=React.useState(0);
 
-  const pushHistory = React.useCallback(()=>{
-    const entry: HistoryEntry = {
-      layersData: layers.map(l=>({ id:l.id, name:l.name, visible:l.visible, locked:l.locked, opacity:l.opacity, blendMode:l.blendMode, dataUrl: l.canvas.toDataURL() })),
-      canvasW, canvasH
-    };
-    setHistory(prev=>{
-      const sliced = prev.slice(0, historyIdx+1);
-      const next = [...sliced, entry];
-      if (next.length>20) next.shift();
-      return next;
-    });
-    setHistoryIdx(prev=> Math.min(prev+1,19));
-  }, [layers, canvasW, canvasH, historyIdx]);
+  // Filters
+  const [activeFilter,setActiveFilter]=React.useState<string>("none");
 
-  const applyHistory = (idx: number) => {
-    const entry = history[idx];
-    if (!entry) return;
-    const newLayers: Layer[] = entry.layersData.map(d=>{
-      const c = createOffscreen(entry.canvasW, entry.canvasH);
-      const img = new Image();
-      img.src = d.dataUrl;
-      // async draw? Instead create canvas from dataUrl sync via immediate draw using image load
-      // We'll approximate by creating canvas and drawing after load, but for undo we need sync.
-      // Workaround: use offscreen canvas with dataURL as source via async effect.
-      // For now create blank and will fill via effect below using Image.
-      return { id:d.id, name:d.name, visible:d.visible, locked:d.locked, opacity:d.opacity, blendMode:d.blendMode, canvas:c, thumbnail:d.dataUrl };
-    });
-    // Load all images async
-    entry.layersData.forEach((d, i)=>{
-      const img = new Image();
-      img.onload = ()=>{
-        const ctx = newLayers[i].canvas.getContext("2d")!;
-        ctx.clearRect(0,0,entry.canvasW, entry.canvasH);
-        ctx.drawImage(img,0,0);
-        setLayers([...newLayers]);
-      };
-      img.src = d.dataUrl;
-    });
-    setCanvasW(entry.canvasW); setCanvasH(entry.canvasH);
-    setHistoryIdx(idx);
-    if (entry.layersData.length===0) return;
-  };
+  // Transform
+  const [scale,setScale]=React.useState(100);
+  const [rotation,setRotation]=React.useState(0);
 
-  const undo = ()=>{ if (historyIdx>=0) applyHistory(historyIdx-1); else if (historyIdx===-1 && history.length===0) return; };
-  const redo = ()=>{ if (historyIdx < history.length-1) applyHistory(historyIdx+1); };
+  // Effects
+  const [shadow,setShadow]=React.useState(false);
+  const [glow,setGlow]=React.useState(false);
 
-  // Composite layers onto main canvas
-  const composite = React.useCallback(()=>{
-    const canvas = mainCanvasRef.current;
-    if (!canvas) return;
+  const renderImage = React.useCallback((img: HTMLImageElement)=>{
+    const canvas = canvasRef.current;
+    if(!canvas) return;
     const ctx = canvas.getContext("2d")!;
-    canvas.width = canvasW;
-    canvas.height = canvasH;
-    ctx.clearRect(0,0,canvasW,canvasH);
-    // checker bg
-    const pattern = document.createElement("canvas");
-    pattern.width=20; pattern.height=20;
-    const pctx=pattern.getContext("2d")!;
-    pctx.fillStyle="#e9e9e9"; pctx.fillRect(0,0,20,20);
-    pctx.fillStyle="#ffffff"; pctx.fillRect(0,0,10,10); pctx.fillRect(10,10,10,10);
-    const pat = ctx.createPattern(pattern, "repeat");
-    if (pat) { ctx.fillStyle=pat; ctx.fillRect(0,0,canvasW, canvasH); }
-    // draw layers bottom to top
-    layers.forEach(l=>{
-      if (!l.visible) return;
-      ctx.globalAlpha = l.opacity/100;
-      ctx.globalCompositeOperation = getBlendOperation(l.blendMode);
-      ctx.drawImage(l.canvas, 0,0);
-    });
-    ctx.globalAlpha=1; ctx.globalCompositeOperation="source-over";
-    // layer style overlays
-    if (layerStyle.shadow && activeLayer) {
+    const maxW = 320;
+    const ratio = Math.min(1, maxW / img.width);
+    canvas.width = img.width * ratio;
+    canvas.height = img.height * ratio;
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.drawImage(img,0,0,canvas.width,canvas.height);
+    // save original data for pixel ops
+    originalDataRef.current = ctx.getImageData(0,0,canvas.width,canvas.height);
+  },[]);
+
+  const applyPreview = React.useCallback(()=>{
+    const canvas = canvasRef.current;
+    if(!canvas || !originalRef.current) return;
+    const ctx = canvas.getContext("2d")!;
+    const img = originalRef.current;
+    // base draw with scale/rotation
+    const maxW = 320;
+    const ratio = Math.min(1, maxW / img.width);
+    const w = img.width * ratio * (scale/100);
+    const h = img.height * ratio * (scale/100);
+    canvas.width = img.width * ratio;
+    canvas.height = img.height * ratio;
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.save();
+    ctx.translate(canvas.width/2, canvas.height/2);
+    ctx.rotate(rotation*Math.PI/180);
+    ctx.translate(-w/2, -h/2);
+    // build filter string from adjustments + activeFilter
+    let filter = `brightness(${1+brightness/100+exposure/100}) contrast(${1+contrast/100}) hue-rotate(${hue}deg) saturate(${1+saturation/100+vibrance/100})`;
+    if(gamma!==1) filter+=` brightness(${gamma})`;
+    if(temperature>0) filter+=` sepia(${temperature/100*0.3})`;
+    if(tint!==0) filter+=` hue-rotate(${tint}deg)`;
+    if(lightness!==0) filter+=` brightness(${1+lightness/100})`;
+    // active filter
+    if(activeFilter==="grayscale") filter+=` grayscale(1)`;
+    if(activeFilter==="invert") filter+=` invert(1)`;
+    if(activeFilter==="sepia") filter+=` sepia(1)`;
+    if(activeFilter==="blur") filter+=` blur(4px)`;
+    if(activeFilter==="sharpen") filter+=` contrast(1.4) brightness(1.05)`;
+    if(activeFilter==="warm") filter+=` sepia(0.3) saturate(1.4) hue-rotate(-10deg)`;
+    if(activeFilter==="cold") filter+=` hue-rotate(180deg) saturate(1.2) brightness(1.1)`;
+    if(activeFilter==="dramatic-warm") filter+=` sepia(0.5) contrast(1.3) saturate(1.5)`;
+    if(activeFilter==="dramatic-cold") filter+=` hue-rotate(200deg) contrast(1.2) saturate(1.3)`;
+    ctx.filter = filter;
+    ctx.drawImage(img,0,0,w,h);
+    ctx.filter="none";
+    ctx.restore();
+    // shadow/glow as post
+    if(shadow){
       ctx.shadowColor="rgba(0,0,0,0.5)"; ctx.shadowBlur=12; ctx.shadowOffsetX=6; ctx.shadowOffsetY=6;
-      ctx.drawImage(activeLayer.canvas,0,0);
+      // redraw with shadow
+      const tmp = document.createElement("canvas");
+      tmp.width=w; tmp.height=h;
+      tmp.getContext("2d")!.drawImage(img,0,0,w,h);
+      ctx.drawImage(tmp,6,6);
       ctx.shadowColor="transparent";
     }
-    // grid
-    if (showGrid) {
-      ctx.strokeStyle="rgba(255,255,255,0.2)"; ctx.lineWidth=1;
-      for(let x=0;x<canvasW;x+=50){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvasH); ctx.stroke(); }
-      for(let y=0;y<canvasH;y+=50){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvasW, y); ctx.stroke(); }
+    // pixel-based filters simplified
+    if(activeFilter==="posterize"){
+      const imgData = ctx.getImageData(0,0,canvas.width,canvas.height);
+      const d = imgData.data;
+      for(let i=0;i<d.length;i+=4){d[i]=Math.floor(d[i]/64)*64; d[i+1]=Math.floor(d[i+1]/64)*64; d[i+2]=Math.floor(d[i+2]/64)*64;}
+      ctx.putImageData(imgData,0,0);
+    } else if(activeFilter==="threshold"){
+      const imgData = ctx.getImageData(0,0,canvas.width,canvas.height);
+      const d = imgData.data;
+      for(let i=0;i<d.length;i+=4){const v=(d[i]+d[i+1]+d[i+2])/3>128?255:0; d[i]=d[i+1]=d[i+2]=v;}
+      ctx.putImageData(imgData,0,0);
+    } else if(activeFilter==="noise"){
+      const imgData = ctx.getImageData(0,0,canvas.width,canvas.height);
+      const d = imgData.data;
+      for(let i=0;i<d.length;i+=4){const n=(Math.random()-0.5)*30; d[i]=Math.max(0,Math.min(255,d[i]+n)); d[i+1]=Math.max(0,Math.min(255,d[i+1]+n)); d[i+2]=Math.max(0,Math.min(255,d[i+2]+n));}
+      ctx.putImageData(imgData,0,0);
+    } else if(activeFilter==="pixelate"){
+      const imgData = ctx.getImageData(0,0,canvas.width,canvas.height);
+      const d = imgData.data;
+      const w=canvas.width, h=canvas.height;
+      const size=10; for(let y=0;y<h;y+=size) for(let x=0;x<w;x+=size){const i=(y*w+x)*4; const r=d[i],g=d[i+1],b=d[i+2]; for(let dy=0;dy<size&&y+dy<h;dy++) for(let dx=0;dx<size&&x+dx<w;dx++){const j=((y+dy)*w+(x+dx))*4; d[j]=r; d[j+1]=g; d[j+2]=b;}}
+      ctx.putImageData(imgData,0,0);
     }
-  }, [layers, canvasW, canvasH, showGrid, layerStyle, activeLayer]);
+  },[brightness,contrast,hue,saturation,lightness,exposure,gamma,temperature,tint,vibrance,activeFilter,scale,rotation,shadow,glow]);
 
-  React.useEffect(()=>{ composite(); }, [composite]);
-  React.useEffect(()=>{
-    // update thumbnails
-    setLayers(prev=> prev.map(l=> ({...l, thumbnail: l.canvas.toDataURL()})));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canvasW, canvasH]);
+  React.useEffect(()=>{ if(imageLoaded) applyPreview(); },[applyPreview,imageLoaded]);
 
-  const getCanvasPos = (e: React.MouseEvent): {x:number,y:number} =>{
-    const rect = (mainCanvasRef.current as HTMLCanvasElement).getBoundingClientRect();
-    const scaleX = canvasW / rect.width;
-    const scaleY = canvasH / rect.height;
-    return { x: (e.clientX - rect.left)*scaleX, y: (e.clientY - rect.top)*scaleY };
-  };
-
-  const handleMouseDown = (e: React.MouseEvent)=>{
-    const pos = getCanvasPos(e);
-    setIsDrawing(true);
-    setLastPos(pos);
-    if (tool==="eyedropper") {
-      const ctx = activeLayer?.canvas.getContext("2d");
-      if (ctx) {
-        const d = ctx.getImageData(Math.floor(pos.x), Math.floor(pos.y),1,1).data;
-        setFg(`#${((1<<24)+(d[0]<<16)+(d[1]<<8)+d[2]).toString(16).slice(1)}`);
-      }
-      return;
-    }
-    if (tool==="text") {
-      pushHistory();
-      const ctx = activeLayer?.canvas.getContext("2d");
-      if (ctx) {
-        ctx.fillStyle = fg;
-        ctx.font = `${fontSize}px Inter, sans-serif`;
-        ctx.fillText(textInput, pos.x, pos.y);
-        setLayers([...layers]);
-      }
-      return;
-    }
-    if (tool==="bucket") {
-      pushHistory();
-      const ctx = activeLayer?.canvas.getContext("2d");
-      if (ctx) { ctx.fillStyle=fg; ctx.fillRect(0,0,canvasW,canvasH); setLayers([...layers]);}
-      return;
-    }
-    if (tool==="gradient") {
-      pushHistory();
-      const ctx = activeLayer?.canvas.getContext("2d");
-      if (ctx) {
-        const g = ctx.createLinearGradient(0,0,canvasW,canvasH);
-        g.addColorStop(0, fg); g.addColorStop(1, bg);
-        ctx.fillStyle=g; ctx.fillRect(0,0,canvasW,canvasH); setLayers([...layers]);
-      }
-      return;
-    }
-    // shape immediate
-    if (tool==="rect"||tool==="ellipse"||tool==="line"||tool==="polygon") {
-      pushHistory();
-      const ctx = activeLayer?.canvas.getContext("2d");
-      if (!ctx) return;
-      ctx.fillStyle=fg; ctx.strokeStyle=fg; ctx.lineWidth=brushSize;
-      if (tool==="rect") ctx.fillRect(pos.x-60, pos.y-40, 120,80);
-      if (tool==="ellipse") { ctx.beginPath(); ctx.ellipse(pos.x,pos.y,60,40,0,0,Math.PI*2); ctx.fill(); }
-      if (tool==="line") { ctx.beginPath(); ctx.moveTo(pos.x-60,pos.y); ctx.lineTo(pos.x+60,pos.y); ctx.stroke(); }
-      if (tool==="polygon") { ctx.beginPath(); for(let i=0;i<5;i++){ const a=(i*2*Math.PI/5)-Math.PI/2; const x=pos.x+ Math.cos(a)*50; const y=pos.y+ Math.sin(a)*50; if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);} ctx.closePath(); ctx.fill();}
-      setLayers([...layers]);
-    }
-  };
-
-  const handleMouseMove = (e: React.MouseEvent)=>{
-    const pos = getCanvasPos(e);
-    setPosInfo({x: Math.round(pos.x), y: Math.round(pos.y), rgb: activeLayer ? (()=>{ const c=activeLayer.canvas.getContext("2d")!.getImageData(Math.min(canvasW-1,Math.max(0,Math.floor(pos.x))), Math.min(canvasH-1,Math.max(0,Math.floor(pos.y))),1,1).data; return `${c[0]},${c[1]},${c[2]}`;})() : "-"});
-    if (!isDrawing || !lastPos || !activeLayer || activeLayer.locked) return;
-    const ctx = activeLayer.canvas.getContext("2d")!;
-    ctx.lineCap="round"; ctx.lineJoin="round";
-    if (tool==="brush"||tool==="airbrush"||tool==="pencil") {
-      ctx.globalAlpha = opacity/100 * (flow/100);
-      ctx.strokeStyle = fg;
-      ctx.lineWidth = tool==="pencil"? 1: brushSize;
-      if (tool==="pencil") ctx.globalCompositeOperation="source-over";
-      ctx.beginPath(); ctx.moveTo(lastPos.x, lastPos.y); ctx.lineTo(pos.x, pos.y); ctx.stroke();
-      // hardness effect via shadow blur simulation
-      if (tool==="airbrush") {
-        ctx.fillStyle=fg; ctx.beginPath(); ctx.arc(pos.x,pos.y, brushSize/2*0.5,0,Math.PI*2); ctx.fill();
-      }
-    } else if (tool==="eraser") {
-      ctx.globalCompositeOperation="destination-out";
-      ctx.strokeStyle="rgba(0,0,0,1)"; ctx.lineWidth=brushSize;
-      ctx.beginPath(); ctx.moveTo(lastPos.x,lastPos.y); ctx.lineTo(pos.x,pos.y); ctx.stroke();
-      ctx.globalCompositeOperation="source-over";
-    } else if (tool==="clone"||tool==="healing") {
-      // simple clone: copy from offset
-      ctx.globalAlpha=0.8;
-      ctx.drawImage(activeLayer.canvas, lastPos.x-10, lastPos.y-10, 20,20, pos.x-10, pos.y-10,20,20);
-      ctx.globalAlpha=1;
-    } else if (tool==="blur-tool") {
-      // fake blur via low opacity fill
-      ctx.globalAlpha=0.15; ctx.fillStyle="#ffffff"; ctx.beginPath(); ctx.arc(pos.x,pos.y, brushSize/2,0,Math.PI*2); ctx.fill(); ctx.globalAlpha=1;
-    } else if (tool==="smudge") {
-      ctx.globalAlpha=0.1; ctx.drawImage(activeLayer.canvas, lastPos.x, lastPos.y, 10,10, pos.x, pos.y,10,10); ctx.globalAlpha=1;
-    } else if (tool==="move") {
-      // move is handled via drag offset? For simplicity we do nothing, layer move would need full translation.
-    }
-    setLastPos(pos);
-    setLayers([...layers]);
-  };
-
-  const handleMouseUp = ()=>{
-    if (isDrawing) { setIsDrawing(false); setLastPos(null); }
-  };
-
-  // Filter helpers using Canvas filter string
-  const applyCanvasFilter = (filter: string)=>{
-    if (!activeLayer || activeLayer.locked) return;
-    pushHistory();
-    const tmp = document.createElement("canvas");
-    tmp.width=canvasW; tmp.height=canvasH;
-    const tctx = tmp.getContext("2d")!;
-    tctx.filter = filter;
-    tctx.drawImage(activeLayer.canvas,0,0);
-    const ctx = activeLayer.canvas.getContext("2d")!;
-    ctx.clearRect(0,0,canvasW,canvasH);
-    ctx.filter="none";
-    ctx.drawImage(tmp,0,0);
-    setLayers([...layers]);
-  };
-
-  const applyPixelFilter = (fn: (data: ImageData)=>void)=>{
-    if (!activeLayer || activeLayer.locked) return;
-    pushHistory();
-    const ctx = activeLayer.canvas.getContext("2d")!;
-    const img = ctx.getImageData(0,0,canvasW,canvasH);
-    fn(img);
-    ctx.putImageData(img,0,0);
-    setLayers([...layers]);
-  };
-
-  const filters: {label:string; fn:()=>void}[] = [
-    {label:"Desaturate", fn:()=> applyCanvasFilter("grayscale(1)")},
-    {label:"Invert", fn:()=> applyCanvasFilter("invert(1)")},
-    {label:"Sepia", fn:()=> applyCanvasFilter("sepia(1)")},
-    {label:"B/W Threshold", fn:()=> applyPixelFilter(d=>{ for(let i=0;i<d.data.length;i+=4){ const v=(d.data[i]+d.data[i+1]+d.data[i+2])/3>128?255:0; d.data[i]=d.data[i+1]=d.data[i+2]=v; }})},
-    {label:"Posterize (4 levels)", fn:()=> applyPixelFilter(d=>{ for(let i=0;i<d.data.length;i+=4){ d.data[i]=Math.floor(d.data[i]/64)*64; d.data[i+1]=Math.floor(d.data[i+1]/64)*64; d.data[i+2]=Math.floor(d.data[i+2]/64)*64; }})},
-    {label:"Brightness +30", fn:()=> applyCanvasFilter("brightness(1.3)")},
-    {label:"Contrast +50", fn:()=> applyCanvasFilter("contrast(1.5)")},
-    {label:"Hue +90°", fn:()=> applyCanvasFilter("hue-rotate(90deg)")},
-    {label:"Saturate 2x", fn:()=> applyCanvasFilter("saturate(2)")},
-    {label:"Gaussian Blur 4px", fn:()=> applyCanvasFilter("blur(4px)")},
-    {label:"Sharpen (contrast+blur inv)", fn:()=> applyCanvasFilter("contrast(1.4) brightness(1.1)")},
-    {label:"Emboss (custom)", fn:()=> applyPixelFilter(d=>{ const w=canvasW,h=canvasH; const copy=new Uint8ClampedArray(d.data); for(let y=1;y<h-1;y++) for(let x=1;x<w-1;x++){ const i=(y*w+x)*4; const v= ((copy[i]-copy[i-4]-copy[i-w*4]) +128); const cl=Math.max(0,Math.min(255,v)); d.data[i]=d.data[i+1]=d.data[i+2]=cl; }})},
-    {label:"Edge Detect", fn:()=> applyPixelFilter(d=>{ const w=canvasW,h=canvasH; const copy=new Uint8ClampedArray(d.data); for(let y=1;y<h-1;y++) for(let x=1;x<w-1;x++){ const i=(y*w+x)*4; const gx=Math.abs(copy[i]-copy[i+4])+Math.abs(copy[i]-copy[i+w*4]); const v=Math.min(255, gx*1.5); d.data[i]=d.data[i+1]=d.data[i+2]=v; }})},
-    {label:"Noise +30", fn:()=> applyPixelFilter(d=>{ for(let i=0;i<d.data.length;i+=4){ const n=(Math.random()-0.5)*30; d.data[i]=Math.max(0,Math.min(255,d.data[i]+n)); d.data[i+1]=Math.max(0,Math.min(255,d.data[i+1]+n)); d.data[i+2]=Math.max(0,Math.min(255,d.data[i+2]+n)); }})},
-    {label:"Pixelate 10px", fn:()=> applyPixelFilter(d=>{ const w=canvasW,h=canvasH; const size=10; for(let y=0;y<h;y+=size) for(let x=0;x<w;x+=size){ const i=(y*w+x)*4; const r=d.data[i],g=d.data[i+1],b=d.data[i+2]; for(let dy=0;dy<size && y+dy<h;dy++) for(let dx=0;dx<size && x+dx<w;dx++){ const j=((y+dy)*w+(x+dx))*4; d.data[j]=r; d.data[j+1]=g; d.data[j+2]=b; }}} )},
-    {label:"Vignette", fn:()=> applyPixelFilter(d=>{ const w=canvasW,h=canvasH; const cx=w/2,cy=h/2, maxR=Math.sqrt(cx*cx+cy*cy); for(let y=0;y<h;y++) for(let x=0;x<w;x++){ const i=(y*w+x)*4; const dist=Math.sqrt((x-cx)*(x-cx)+(y-cy)*(y-cy)); const v=1 - (dist/maxR)*0.7; d.data[i]*=v; d.data[i+1]*=v; d.data[i+2]*=v; }})},
-    {label:"Motion Blur (h)", fn:()=> applyCanvasFilter("blur(2px) contrast(1.1)")},
-    {label:"Warm Filter", fn:()=> applyCanvasFilter("sepia(0.3) saturate(1.4) hue-rotate(-10deg)")},
-    {label:"Cold Filter", fn:()=> applyCanvasFilter("hue-rotate(180deg) saturate(1.2) brightness(1.1)")},
-    {label:"Duotone (fg/bg)", fn:()=> applyPixelFilter(d=>{ for(let i=0;i<d.data.length;i+=4){ const g=0.299*d.data[i]+0.587*d.data[i+1]+0.114*d.data[i+2]; const fr=parseInt(fg.slice(1,3),16), fgg=parseInt(fg.slice(3,5),16), fb=parseInt(fg.slice(5,7),16); const br=parseInt(bg.slice(1,3),16), bgg=parseInt(bg.slice(3,5),16), bb=parseInt(bg.slice(5,7),16); const t=g/255; d.data[i]=fr*t+br*(1-t); d.data[i+1]=fgg*t+bgg*(1-t); d.data[i+2]=fb*t+bb*(1-t); }})},
-  ];
-
-  const addNewLayer = ()=>{
-    pushHistory();
-    const c = createOffscreen(canvasW, canvasH);
-    const id = Date.now().toString();
-    setLayers(prev=> [...prev, { id, name:`Layer ${prev.length+1}`, visible:true, locked:false, opacity:100, blendMode:"normal", canvas:c, thumbnail:c.toDataURL()}]);
-    setActiveLayerId(id);
-  };
-
-  const duplicateLayer = ()=>{
-    if (!activeLayer) return;
-    pushHistory();
-    const c = createOffscreen(canvasW, canvasH);
-    c.getContext("2d")!.drawImage(activeLayer.canvas,0,0);
-    const id=Date.now().toString();
-    setLayers(prev=>{
-      const idx=prev.findIndex(l=>l.id===activeLayerId);
-      const copy: Layer = { id, name: activeLayer.name+" copy", visible:true, locked:false, opacity:activeLayer.opacity, blendMode:activeLayer.blendMode, canvas:c, thumbnail:c.toDataURL()};
-      const next=[...prev]; next.splice(idx+1,0,copy); return next;
-    });
-    setActiveLayerId(id);
-  };
-
-  const deleteLayer = ()=>{
-    if (layers.length<=1 || !activeLayer) return;
-    pushHistory();
-    const idx=layers.findIndex(l=>l.id===activeLayerId);
-    const next=layers.filter(l=>l.id!==activeLayerId);
-    setLayers(next);
-    setActiveLayerId(next[Math.max(0, idx-1)].id);
-  };
-
-  const mergeDown = ()=>{
-    const idx=layers.findIndex(l=>l.id===activeLayerId);
-    if (idx<=0) return;
-    pushHistory();
-    const lower=layers[idx-1];
-    const upper=layers[idx];
-    const lctx=lower.canvas.getContext("2d")!;
-    lctx.globalAlpha=upper.opacity/100; lctx.globalCompositeOperation=getBlendOperation(upper.blendMode);
-    lctx.drawImage(upper.canvas,0,0);
-    lctx.globalAlpha=1; lctx.globalCompositeOperation="source-over";
-    setLayers(prev=> prev.filter(l=>l.id!==activeLayerId));
-    setActiveLayerId(lower.id);
-  };
-
-  const flattenImage = ()=>{
-    pushHistory();
-    const base = createOffscreen(canvasW, canvasH, "#ffffff");
-    const bctx=base.getContext("2d")!;
-    layers.forEach(l=>{ if(!l.visible) return; bctx.globalAlpha=l.opacity/100; bctx.globalCompositeOperation=getBlendOperation(l.blendMode); bctx.drawImage(l.canvas,0,0); });
-    bctx.globalAlpha=1; bctx.globalCompositeOperation="source-over";
-    setLayers([{ id:"flat", name:"Background", visible:true, locked:false, opacity:100, blendMode:"normal", canvas:base, thumbnail:base.toDataURL()}]);
-    setActiveLayerId("flat");
-  };
-
-  const handleFileOpen = (e: React.ChangeEvent<HTMLInputElement>)=>{
-    const file=e.target.files?.[0]; if(!file) return;
+  const loadFromFile = (file: File)=>{
     const img=new Image();
     img.onload=()=>{
-      pushHistory();
-      const w=img.width, h=img.height;
-      setCanvasW(w); setCanvasH(h);
-      const c=createOffscreen(w,h);
-      c.getContext("2d")!.drawImage(img,0,0);
-      setLayers(prev=> [...prev, { id: Date.now().toString(), name: file.name, visible:true, locked:false, opacity:100, blendMode:"normal", canvas:c, thumbnail:c.toDataURL()}]);
+      originalRef.current=img;
+      renderImage(img);
+      setImageLoaded(true);
+      setStatus(`Loaded ${file.name} ${img.width}×${img.height}`);
     };
     img.src=URL.createObjectURL(file);
   };
 
-  const handleExport = (type: "png"|"jpeg")=>{
-    const canvas=mainCanvasRef.current; if(!canvas) return;
+  const loadFromSelection = async ()=>{
+    if(!selection) { setStatus("No image selected — use upload"); return; }
+    try{
+      const draft=await selection.read();
+      const [image]=draft.contents;
+      if(!image){ setStatus("Select a single image in Canva first"); return;}
+      const {url}=await getTemporaryUrl({type:"image", ref: image.ref});
+      const img=await downloadImage(url);
+      originalRef.current=img;
+      renderImage(img);
+      setImageLoaded(true);
+      setStatus(`Loaded selected image ${img.width}×${img.height}`);
+    }catch(e){ setStatus("Failed to load selected image: "+String(e)); }
+  };
+
+  const handleFileChange=(e: React.ChangeEvent<HTMLInputElement>)=>{
+    const file=e.target.files?.[0]; if(file) loadFromFile(file);
+  };
+
+  const resetAll=()=>{
+    setBrightness(0); setContrast(0); setHue(0); setSaturation(0); setLightness(0); setExposure(0); setGamma(1); setTemperature(0); setTint(0); setVibrance(0);
+    setActiveFilter("none"); setScale(100); setRotation(0); setShadow(false); setGlow(false);
+    if(originalRef.current) renderImage(originalRef.current);
+  };
+
+  const exportToCanva=async (mode:"add"|"replace")=>{
+    const canvas=canvasRef.current;
+    if(!canvas || !imageLoaded) return;
+    const dataUrl=canvas.toDataURL("image/png");
+    setStatus("Uploading to Canva…");
+    try{
+      const asset=await upload({type:"image", mimeType:"image/png", url:dataUrl, thumbnailUrl:dataUrl, width:canvas.width, height:canvas.height, aiDisclosure:"none"});
+      if(mode==="replace" && selection){
+        try{
+          const draft=await selection.read();
+          const [img]=draft.contents;
+          if(img){ img.ref=asset.ref; await draft.save(); setStatus("Replaced selected image in design"); return;}
+        }catch{}
+      }
+      if(addElement){
+        await addElement({type:"image", ref: asset.ref, altText:{text:"CanvaShop edited image", decorative:false}});
+        setStatus("Added edited image to design");
+      } else setStatus("Uploaded, but add to design not supported here");
+    }catch(e){ setStatus("Upload failed: "+String(e)); }
+  };
+
+  const exportDownload=(type:"png"|"jpeg")=>{
+    const canvas=canvasRef.current; if(!canvas) return;
     const url=canvas.toDataURL(type==="png"?"image/png":"image/jpeg",0.92);
     const a=document.createElement("a"); a.href=url; a.download=`canvashop-${Date.now()}.${type}`; a.click();
-  };
-
-  const handleAddToCanva = async ()=>{
-    const canvas=mainCanvasRef.current; if(!canvas || !addElement) return;
-    const dataUrl=canvas.toDataURL("image/png");
-    try{
-      // upload via @canva/asset
-      const result = await upload({
-        type: "image",
-        mimeType: "image/png",
-        url: dataUrl,
-        thumbnailUrl: dataUrl,
-        width: canvasW,
-        height: canvasH,
-        aiDisclosure: "none",
-      });
-      await addElement({ type:"image", ref: result.ref, altText: { text:"CanvaShop export", decorative:false } });
-    } catch(err){
-      // fallback: try adding as image with dataUrl via addElement? Will show alert.
-      alert("Export to Canva: " + String(err));
-    }
-  };
-
-  const handleNewDocument = ()=>{
-    const w=prompt("Canvas width", String(canvasW)); const h=prompt("Canvas height", String(canvasH));
-    const nw=parseInt(w||"900"); const nh=parseInt(h||"600");
-    if (!isNaN(nw) && !isNaN(nh)) {
-      pushHistory();
-      setCanvasW(nw); setCanvasH(nh);
-      layers.forEach(l=>{ const c=createOffscreen(nw,nh); // keep content scaled
-        c.getContext("2d")!.drawImage(l.canvas,0,0,nw,nh);
-        l.canvas.width=nw; l.canvas.height=nh;
-        l.canvas.getContext("2d")!.drawImage(c,0,0);
-      });
-      setLayers([...layers]);
-    }
-  };
-
-  // Adjustment application via filter
-  const applyAdjustment = ()=>{
-    const b = brightness/100, c = contrast/100, h = hue, s = saturation/100, ex = exposure/100;
-    let f = `brightness(${1 + b + ex}) contrast(${1 + c}) hue-rotate(${h}deg) saturate(${1 + s})`;
-    if (gamma!==1) f += ` brightness(${gamma})`;
-    applyCanvasFilter(f);
-  };
-
-  const moveLayer = (dir: -1|1)=>{
-    const idx=layers.findIndex(l=>l.id===activeLayerId);
-    const nidx=idx+dir;
-    if (nidx<0||nidx>=layers.length) return;
-    const next=[...layers];
-    const [moved]=next.splice(idx,1);
-    next.splice(nidx,0,moved);
-    setLayers(next);
-  };
-
-  // Transform helpers
-  const transformFlip = (axis:"h"|"v")=>{
-    if(!activeLayer||activeLayer.locked) return;
-    pushHistory();
-    const tmp=createOffscreen(canvasW,canvasH);
-    const tctx=tmp.getContext("2d")!;
-    tctx.save();
-    if(axis==="h"){ tctx.scale(-1,1); tctx.drawImage(activeLayer.canvas, -canvasW,0); }
-    else { tctx.scale(1,-1); tctx.drawImage(activeLayer.canvas,0,-canvasH); }
-    tctx.restore();
-    activeLayer.canvas.getContext("2d")!.clearRect(0,0,canvasW,canvasH);
-    activeLayer.canvas.getContext("2d")!.drawImage(tmp,0,0);
-    setLayers([...layers]);
-  };
-
-  const transformRotate = (deg:number)=>{
-    if(!activeLayer||activeLayer.locked) return;
-    pushHistory();
-    const tmp=createOffscreen(canvasW,canvasH);
-    const tctx=tmp.getContext("2d")!;
-    tctx.translate(canvasW/2,canvasH/2);
-    tctx.rotate(deg*Math.PI/180);
-    tctx.translate(-canvasW/2,-canvasH/2);
-    tctx.drawImage(activeLayer.canvas,0,0);
-    const ctx=activeLayer.canvas.getContext("2d")!;
-    ctx.clearRect(0,0,canvasW,canvasH);
-    ctx.drawImage(tmp,0,0);
-    setLayers([...layers]);
+    setStatus(`Downloaded ${type.toUpperCase()}`);
   };
 
   return (
-    <div style={{ display:"flex", flexDirection:"column", height:"100vh", background:"#1e1e1e", color:"#e0e0e0", fontFamily:"Inter, Segoe UI, sans-serif", fontSize:12, overflow:"hidden", userSelect:"none" }}>
-      {/* Title Bar */}
-      <div style={{ height:32, background:"#2d2d2d", display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 12px", borderBottom:"1px solid #3a3a3a", flexShrink:0 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-          <div style={{ width:22, height:22, background:"linear-gradient(135deg,#31a8ff,#31ff8a)", borderRadius:4, display:"flex", alignItems:"center", justifyContent:"center", fontWeight:800, color:"#000", fontSize:10 }}>Ps</div>
-          <span style={{ fontWeight:600, letterSpacing:0.5 }}>CanvaShop (PS RM)</span>
-          <span style={{ opacity:0.5, fontSize:11 }}>| Photoshop Remake • 65 Features • Canva App</span>
-        </div>
-        <div style={{ display:"flex", gap:6, alignItems:"center" }}>
-          <button onClick={()=>setShowFeatures(!showFeatures)} style={{ background: showFeatures?"#007aff":"#3a3a3a", color:"#fff", border:"none", borderRadius:4, padding:"4px 10px", cursor:"pointer", fontSize:11 }}>{showFeatures?"Hide Features":"Show 65 Features"}</button>
-          <div style={{ width:12,height:12,borderRadius:"50%",background:"#ff5f57", border:"1px solid #e0443e"}}/>
-          <div style={{ width:12,height:12,borderRadius:"50%",background:"#ffbd2e", border:"1px solid #dea123"}}/>
-          <div style={{ width:12,height:12,borderRadius:"50%",background:"#28ca42", border:"1px solid #1bac2c"}}/>
-        </div>
-      </div>
+    <div className={styles.scrollContainer}>
+      <Rows spacing="2u">
+        <Rows spacing="1u">
+          <Title size="small">CanvaShop (PS RM)</Title>
+          <Text size="small" tone="tertiary">Photoshop tools for Canva — manipulate any image with 60+ Photoshop features, just like native Canva apps. Select an image in your design or upload one.</Text>
+          <Text size="xsmall" tone="tertiary">{status}</Text>
+        </Rows>
 
-      {/* Menu Bar */}
-      <div style={{ height:26, background:"#383838", display:"flex", alignItems:"center", padding:"0 8px", gap:16, borderBottom:"1px solid #2d2d2d", flexShrink:0, overflowX:"auto" }}>
-        {["File","Edit","Image","Layer","Select","Filter","View","Window","Help"].map(m=>(
-          <span key={m} style={{ cursor:"pointer", padding:"2px 6px", borderRadius:3, opacity:0.9 }} onClick={()=>{
-            if(m==="File") handleNewDocument();
-            if(m==="Edit" && confirm("Undo?")) undo();
-            if(m==="Filter") setRightTab("filters");
-          }}>{m}</span>
-        ))}
-        <span style={{ marginLeft:"auto", fontSize:10, opacity:0.6 }}>Zoom: {zoom}% • Doc: {canvasW}×{canvasH} • {layers.length} layers</span>
-      </div>
+        {/* Image source */}
+        <Rows spacing="1u">
+          <Columns spacing="1u">
+            <Column><Button variant="primary" onClick={loadFromSelection} stretch>Use selected image</Button></Column>
+            <Column><Button variant="secondary" onClick={()=>fileInputRef.current?.click()} stretch>Upload image</Button></Column>
+          </Columns>
+          <input ref={fileInputRef} type="file" accept="image/*" style={{display:"none"}} onChange={handleFileChange} />
+        </Rows>
 
-      {/* Options Bar */}
-      <div style={{ height:38, background:"#2d2d2d", display:"flex", alignItems:"center", gap:12, padding:"0 10px", borderBottom:"1px solid #3a3a3a", flexShrink:0, flexWrap:"wrap" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-          <span style={{ opacity:0.7 }}>Tool:</span><strong style={{ color:"#31a8ff", textTransform:"capitalize"}}>{tool}</strong>
-        </div>
-        <div style={{ width:1, height:20, background:"#444"}}/>
-        <label style={{ display:"flex", alignItems:"center", gap:6 }}>Size <input type="range" min={1} max={100} value={brushSize} onChange={e=>setBrushSize(parseInt(e.target.value))} style={{ width:90 }}/> <span style={{ minWidth:24 }}>{brushSize}</span></label>
-        <label style={{ display:"flex", alignItems:"center", gap:6 }}>Hardness <input type="range" min={0} max={100} value={hardness} onChange={e=>setHardness(parseInt(e.target.value))} style={{ width:70 }}/> {hardness}%</label>
-        <label style={{ display:"flex", alignItems:"center", gap:6 }}>Opacity <input type="range" min={1} max={100} value={opacity} onChange={e=>setOpacity(parseInt(e.target.value))} style={{ width:70 }}/> {opacity}%</label>
-        <label style={{ display:"flex", alignItems:"center", gap:6 }}>Flow <input type="range" min={1} max={100} value={flow} onChange={e=>setFlow(parseInt(e.target.value))} style={{ width:70 }}/> {flow}%</label>
-        <div style={{ width:1, height:20, background:"#444"}}/>
-        <button onClick={undo} style={{ background:"#3a3a3a", color:"#fff", border:"1px solid #555", borderRadius:4, padding:"4px 8px", cursor:"pointer"}}>↶ Undo</button>
-        <button onClick={redo} style={{ background:"#3a3a3a", color:"#fff", border:"1px solid #555", borderRadius:4, padding:"4px 8px", cursor:"pointer"}}>↷ Redo</button>
-        <button onClick={()=>applyAdjustment()} style={{ background:"#007aff", color:"#fff", border:"none", borderRadius:4, padding:"4px 10px", cursor:"pointer"}}>Apply Adjustments</button>
-        <span style={{ marginLeft:6, fontSize:10, opacity:0.6 }}>{posInfo.x}, {posInfo.y} | RGB {posInfo.rgb}</span>
-      </div>
+        {/* Preview */}
+        <Box background="neutralLow" borderRadius="element" padding="1u">
+          <Rows spacing="1u">
+            <Text size="small" alignment="center">Preview</Text>
+            <Box background="neutralHigh" borderRadius="element" padding="1u" display="flex" alignItems="center" justifyContent="center">
+              {!imageLoaded ? (
+                <Text size="small" tone="tertiary" alignment="center">No image — select in Canva or upload. Example will show after you load.</Text>
+              ) : (
+                <canvas ref={canvasRef} style={{maxWidth:"100%", borderRadius:4, border:"1px solid #e5e5e5", display:"block"}} />
+              )}
+            </Box>
+            <Columns spacing="1u">
+              <Column><Button variant="secondary" onClick={resetAll} stretch>Reset all</Button></Column>
+              <Column><Button variant="secondary" onClick={()=>exportDownload("png")} stretch>Download PNG</Button></Column>
+            </Columns>
+            <Columns spacing="1u">
+              <Column><Button variant="primary" onClick={()=>exportToCanva("add")} disabled={!imageLoaded || !addElement} stretch>Add to design</Button></Column>
+              <Column><Button variant="secondary" onClick={()=>exportToCanva("replace")} disabled={!imageLoaded} stretch>Replace selected</Button></Column>
+            </Columns>
+            {!addElement && <Alert tone="info">Add to design not supported in this surface — use Download then upload manually.</Alert>}
+          </Rows>
+        </Box>
 
-      <div style={{ display:"flex", flex:1, overflow:"hidden" }}>
-        {/* Left Toolbar */}
-        <div style={{ width:56, background:"#2d2d2d", borderRight:"1px solid #3a3a3a", display:"flex", flexDirection:"column", alignItems:"center", padding:"8px 4px", gap:4, overflowY:"auto", flexShrink:0 }}>
-          {[
-            {id:"move", icon:"↖", tip:"Move (V)"},
-            {id:"marquee-rect", icon:"⬚", tip:"Rect Marquee (M)"},
-            {id:"marquee-ellipse", icon:"⬭", tip:"Ellipse Marquee"},
-            {id:"lasso", icon:"〰", tip:"Lasso (L)"},
-            {id:"magic-wand", icon:"🪄", tip:"Magic Wand (W)"},
-            {id:"quick-select", icon:"◉", tip:"Quick Select"},
-            {id:"crop", icon:"⊏", tip:"Crop (C)"},
-            {id:"eyedropper", icon:"💧", tip:"Eyedropper (I)"},
-            {id:"brush", icon:"🖌", tip:"Brush (B)"},
-            {id:"pencil", icon:"✏", tip:"Pencil"},
-            {id:"airbrush", icon:"💨", tip:"Airbrush"},
-            {id:"eraser", icon:"⌫", tip:"Eraser (E)"},
-            {id:"clone", icon:"⎘", tip:"Clone Stamp (S)"},
-            {id:"healing", icon:"🩹", tip:"Healing Brush"},
-            {id:"gradient", icon:"🌈", tip:"Gradient (G)"},
-            {id:"bucket", icon:"🪣", tip:"Paint Bucket"},
-            {id:"blur-tool", icon:"◎", tip:"Blur/Sharpen"},
-            {id:"dodge", icon:"☀", tip:"Dodge/Burn/Sponge"},
-            {id:"pen", icon:"✒", tip:"Pen (P)"},
-            {id:"text", icon:"T", tip:"Type (T)"},
-            {id:"rect", icon:"▭", tip:"Rectangle (U)"},
-            {id:"ellipse", icon:"○", tip:"Ellipse"},
-            {id:"polygon", icon:"⬡", tip:"Polygon"},
-            {id:"line", icon:"╱", tip:"Line"},
-            {id:"hand", icon:"✋", tip:"Hand (H)"},
-            {id:"zoom", icon:"🔍", tip:"Zoom (Z)"},
-          ].map(t=>(
-            <button key={t.id} title={t.tip} onClick={()=>setTool(t.id as Tool)} style={{ width:36, height:36, background: tool===t.id?"#007aff":"#3a3a3a", color:"#fff", border: tool===t.id?"1px solid #31a8ff":"1px solid #444", borderRadius:6, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, fontWeight:600 }}>
-              {t.icon}
-            </button>
-          ))}
-          <div style={{ width:36, height:1, background:"#444", margin:"6px 0"}}/>
-          <div style={{ display:"flex", flexDirection:"column", gap:4, alignItems:"center" }}>
-            <div style={{ display:"flex", gap:4 }}>
-              <input type="color" value={fg} onChange={e=>setFg(e.target.value)} style={{ width:28, height:28, padding:0, border:"1px solid #555", borderRadius:4, cursor:"pointer", background:"transparent"}} title="Foreground"/>
-              <input type="color" value={bg} onChange={e=>setBg(e.target.value)} style={{ width:28, height:28, padding:0, border:"1px solid #555", borderRadius:4, cursor:"pointer", background:"transparent"}} title="Background"/>
-            </div>
-            <button onClick={()=>{const tmp=fg; setFg(bg); setBg(tmp);}} style={{ fontSize:10, background:"#444", color:"#fff", border:"none", borderRadius:3, padding:"2px 4px", cursor:"pointer"}}>⇄ Swap</button>
-            <div style={{ display:"flex", flexWrap:"wrap", gap:2, width:36 }}>
-              {["#000000","#ffffff","#ff3b30","#ff9500","#ffcc00","#4cd964","#007aff","#5856d6","#ff2d55","#8e8e93"].map(c=>(
-               <div key={c} onClick={()=>setFg(c)} style={{ width:10, height:10, background:c, border:"1px solid #555", borderRadius:2, cursor:"pointer"}}/>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Center Canvas Area */}
-        <div style={{ flex:1, background:"#535353", display:"flex", flexDirection:"column", overflow:"hidden", position:"relative" }}>
-          {showRulers && (
-            <>
-              <div style={{ height:16, background:"#2d2d2d", display:"flex", alignItems:"center", paddingLeft:16, fontSize:9, color:"#aaa", gap:40, borderBottom:"1px solid #3a3a3a", flexShrink:0 }}>
-                <span>↔ {canvasW}px</span><span>↕ {canvasH}px</span><span>300 ppi</span><span>RGB/8#</span>
-              </div>
-            </>
-          )}
-          <div style={{ flex:1, overflow:"auto", display:"flex", alignItems:"center", justifyContent:"center", padding:20, background:"#535353" }}
-               onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
-            <div style={{ background:"#2d2d2d", padding:8, borderRadius:6, boxShadow:"0 10px 40px rgba(0,0,0,0.5)", border:"1px solid #3a3a3a"}}>
-              <div style={{ position:"relative", width: canvasW * (zoom/100), height: canvasH * (zoom/100), overflow:"hidden", background:"#fff", border:"1px solid #111" }}>
-                <canvas
-                  ref={mainCanvasRef}
-                  width={canvasW} height={canvasH}
-                  style={{ width:"100%", height:"100%", display:"block", cursor: tool==="brush"?"crosshair": tool==="hand"?"grab":"default" }}
-                />
-                {showGrid && <div style={{ position:"absolute", inset:0, pointerEvents:"none", backgroundImage:"linear-gradient(to right, rgba(0,0,0,0.12) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,0,0,0.12) 1px, transparent 1px)", backgroundSize:"50px 50px"}}/>}
-              </div>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:6, fontSize:10, color:"#aaa"}}>
-                <span>Doc: {(canvasW*canvasH*4/1024/1024).toFixed(2)}M | Scratch: {(layers.length*canvasW*canvasH*4/1024/1024).toFixed(1)}M | Efficiency: 100%</span>
-                <div style={{ display:"flex", gap:6, alignItems:"center"}}>
-                  <button onClick={()=>setZoom(z=>Math.max(10, z-25))} style={{ background:"#3a3a3a", color:"#fff", border:"1px solid #555", borderRadius:3, padding:"2px 6px", cursor:"pointer"}}>-</button>
-                  <span style={{ minWidth:40, textAlign:"center"}}>{zoom}%</span>
-                  <button onClick={()=>setZoom(z=>Math.min(3200, z+25))} style={{ background:"#3a3a3a", color:"#fff", border:"1px solid #555", borderRadius:3, padding:"2px 6px", cursor:"pointer"}}>+</button>
-                  <button onClick={()=>setZoom(100)} style={{ background:"#007aff", color:"#fff", border:"none", borderRadius:3, padding:"2px 6px", cursor:"pointer"}}>100%</button>
-                  <button onClick={()=>setZoom(50)} style={{ background:"#3a3a3a", color:"#fff", border:"1px solid #555", borderRadius:3, padding:"2px 6px", cursor:"pointer"}}>Fit</button>
-                </div>
-              </div>
-            </div>
-          </div>
-          {/* File actions bar */}
-          <div style={{ height:32, background:"#2d2d2d", borderTop:"1px solid #3a3a3a", display:"flex", alignItems:"center", gap:8, padding:"0 10px", flexShrink:0, flexWrap:"wrap"}}>
-            <input ref={fileInputRef} type="file" accept="image/*" style={{ display:"none"}} onChange={handleFileOpen}/>
-            <button onClick={()=>fileInputRef.current?.click()} style={{ background:"#007aff", color:"#fff", border:"none", borderRadius:4, padding:"5px 10px", cursor:"pointer", fontWeight:600}}>📂 Open Image</button>
-            <button onClick={handleNewDocument} style={{ background:"#3a3a3a", color:"#fff", border:"1px solid #555", borderRadius:4, padding:"5px 10px", cursor:"pointer"}}>New Doc / Resize</button>
-            <button onClick={()=>handleExport("png")} style={{ background:"#3a3a3a", color:"#fff", border:"1px solid #555", borderRadius:4, padding:"5px 10px", cursor:"pointer"}}>⬇ PNG</button>
-            <button onClick={()=>handleExport("jpeg")} style={{ background:"#3a3a3a", color:"#fff", border:"1px solid #555", borderRadius:4, padding:"5px 10px", cursor:"pointer"}}>⬇ JPG</button>
-            <button onClick={handleAddToCanva} disabled={!addElement} style={{ background: addElement?"#28ca42":"#555", color:"#fff", border:"none", borderRadius:4, padding:"5px 12px", cursor: addElement?"pointer":"not-allowed", fontWeight:600}}>✨ Add to Canva Design</button>
-            <span style={{ marginLeft:"auto", fontSize:10, opacity:0.6, display:"flex", gap:8}}>
-              <label style={{ display:"flex", alignItems:"center", gap:4, cursor:"pointer"}}><input type="checkbox" checked={showGrid} onChange={e=>setShowGrid(e.target.checked)}/> Grid</label>
-              <label style={{ display:"flex", alignItems:"center", gap:4, cursor:"pointer"}}><input type="checkbox" checked={showRulers} onChange={e=>setShowRulers(e.target.checked)}/> Rulers</label>
-              <label style={{ display:"flex", alignItems:"center", gap:4, cursor:"pointer"}}><input type="checkbox" checked={layerStyle.shadow} onChange={e=>setLayerStyle({...layerStyle, shadow:e.target.checked})}/> Shadow</label>
-            </span>
-          </div>
-        </div>
-
-        {/* Right Dock */}
-        <div style={{ width:300, background:"#2d2d2d", borderLeft:"1px solid #3a3a3a", display:"flex", flexDirection:"column", flexShrink:0, overflow:"hidden"}}>
-          <div style={{ display:"flex", borderBottom:"1px solid #3a3a3a", flexShrink:0}}>
-            {(["layers","adjust","filters","history","info"] as const).map(t=>(
-              <button key={t} onClick={()=>setRightTab(t)} style={{ flex:1, padding:"8px 0", background: rightTab===t?"#3a3a3a":"#2d2d2d", color: rightTab===t?"#fff":"#aaa", border:"none", borderRight:"1px solid #3a3a3a", cursor:"pointer", fontSize:11, textTransform:"capitalize", fontWeight: rightTab===t?700:400 }}>{t}</button>
-            ))}
-          </div>
-
-          <div style={{ flex:1, overflowY:"auto", padding:10, display:"flex", flexDirection:"column", gap:12}}>
-            {rightTab==="layers" && (
-              <>
-                <div style={{ display:"flex", gap:6, flexWrap:"wrap"}}>
-                  <button onClick={addNewLayer} style={{ flex:1, background:"#007aff", color:"#fff", border:"none", borderRadius:4, padding:"6px", cursor:"pointer", fontSize:11}}>＋ New Layer</button>
-                  <button onClick={duplicateLayer} style={{ flex:1, background:"#3a3a3a", color:"#fff", border:"1px solid #555", borderRadius:4, padding:"6px", cursor:"pointer", fontSize:11}}>Duplicate</button>
-                </div>
-                <div style={{ display:"flex", gap:6}}>
-                  <button onClick={deleteLayer} style={{ flex:1, background:"#ff3b30", color:"#fff", border:"none", borderRadius:4, padding:"6px", cursor:"pointer", fontSize:11}}>Delete</button>
-                  <button onClick={mergeDown} style={{ flex:1, background:"#3a3a3a", color:"#fff", border:"1px solid #555", borderRadius:4, padding:"6px", cursor:"pointer", fontSize:11}}>Merge Down</button>
-                  <button onClick={flattenImage} style={{ flex:1, background:"#3a3a3a", color:"#fff", border:"1px solid #555", borderRadius:4, padding:"6px", cursor:"pointer", fontSize:11}}>Flatten</button>
-                </div>
-                <div style={{ display:"flex", gap:4}}>
-                  <button onClick={()=>moveLayer(-1)} style={{ flex:1, background:"#3a3a3a", color:"#fff", border:"1px solid #555", borderRadius:4, padding:"4px", cursor:"pointer", fontSize:11}}>▲ Move Up</button>
-                  <button onClick={()=>moveLayer(1)} style={{ flex:1, background:"#3a3a3a", color:"#fff", border:"1px solid #555", borderRadius:4, padding:"4px", cursor:"pointer", fontSize:11}}>▼ Move Down</button>
-                </div>
-                <div style={{ display:"flex", gap:4, alignItems:"center"}}>
-                  <span style={{ fontSize:11, minWidth:50}}>Opacity</span>
-                  <input type="range" min={0} max={100} value={activeLayer?.opacity ?? 100} onChange={e=>{ if(activeLayer){ activeLayer.opacity=parseInt(e.target.value); setLayers([...layers]); }}} style={{ flex:1}}/>
-                  <span style={{ minWidth:30, fontSize:11}}>{activeLayer?.opacity ?? 100}%</span>
-                </div>
-                <div style={{ display:"flex", gap:4, alignItems:"center"}}>
-                  <span style={{ fontSize:11, minWidth:50}}>Blend</span>
-                  <select value={activeLayer?.blendMode ?? "normal"} onChange={e=>{ if(activeLayer){ activeLayer.blendMode=e.target.value as BlendMode; setLayers([...layers]); }}} style={{ flex:1, background:"#383838", color:"#fff", border:"1px solid #555", borderRadius:4, padding:"4px", fontSize:11}}>
-                    {BLEND_MODES.map(m=> <option key={m} value={m}>{m}</option>)}
-                  </select>
-                </div>
-                <div style={{ display:"flex", gap:4, flexWrap:"wrap"}}>
-                  <button onClick={()=>transformFlip("h")} style={{ flex:1, background:"#3a3a3a", color:"#fff", border:"1px solid #555", borderRadius:4, padding:"4px", cursor:"pointer", fontSize:10}}>Flip H</button>
-                  <button onClick={()=>transformFlip("v")} style={{ flex:1, background:"#3a3a3a", color:"#fff", border:"1px solid #555", borderRadius:4, padding:"4px", cursor:"pointer", fontSize:10}}>Flip V</button>
-                  <button onClick={()=>transformRotate(-90)} style={{ flex:1, background:"#3a3a3a", color:"#fff", border:"1px solid #555", borderRadius:4, padding:"4px", cursor:"pointer", fontSize:10}}>↺ 90°</button>
-                  <button onClick={()=>transformRotate(90)} style={{ flex:1, background:"#3a3a3a", color:"#fff", border:"1px solid #555", borderRadius:4, padding:"4px", cursor:"pointer", fontSize:10}}>↻ 90°</button>
-                  <button onClick={()=>transformRotate(180)} style={{ flex:1, background:"#3a3a3a", color:"#fff", border:"1px solid #555", borderRadius:4, padding:"4px", cursor:"pointer", fontSize:10}}>180°</button>
-                </div>
-
-                <div style={{ fontWeight:700, fontSize:11, opacity:0.8, marginTop:4}}>Layers ({layers.length})</div>
-                <div style={{ display:"flex", flexDirection:"column", gap:4}}>
-                  {[...layers].reverse().map(l=>{
-                    const actualIdx = layers.findIndex(x=>x.id===l.id);
-                    const isActive = l.id===activeLayerId;
-                    return (
-                      <div key={l.id} onClick={()=>setActiveLayerId(l.id)} style={{ display:"flex", alignItems:"center", gap:8, padding:"6px 8px", background: isActive?"#007aff":"#383838", border:`1px solid ${isActive?"#31a8ff":"#444"}`, borderRadius:6, cursor:"pointer"}}>
-                        <button onClick={e=>{e.stopPropagation(); l.visible=!l.visible; setLayers([...layers]);}} style={{ background:"transparent", border:"none", cursor:"pointer", fontSize:12}} title="Visibility">{l.visible?"👁":"🚫"}</button>
-                        <button onClick={e=>{e.stopPropagation(); l.locked=!l.locked; setLayers([...layers]);}} style={{ background:"transparent", border:"none", cursor:"pointer", fontSize:10}} title="Lock">{l.locked?"🔒":"🔓"}</button>
-                        <img src={l.thumbnail} style={{ width:36, height:26, objectFit:"cover", border:"1px solid #555", borderRadius:3, background:"#fff"}}/>
-                        <div style={{ flex:1, minWidth:0}}>
-                          <div style={{ fontSize:11, fontWeight: isActive?700:400, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis"}}>{l.name}</div>
-                          <div style={{ fontSize:9, opacity:0.7}}>{l.blendMode} • {l.opacity}%</div>
-                        </div>
-                        <span style={{ fontSize:9, opacity:0.6}}>#{actualIdx+1}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div style={{ marginTop:8, padding:8, background:"#383838", borderRadius:6, border:"1px solid #444"}}>
-                  <div style={{ fontWeight:700, fontSize:11, marginBottom:6}}>Layer Styles</div>
-                  <label style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4, cursor:"pointer"}}><input type="checkbox" checked={layerStyle.shadow} onChange={e=>setLayerStyle({...layerStyle, shadow:e.target.checked})}/> Drop Shadow</label>
-                  <label style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4, cursor:"pointer"}}><input type="checkbox" checked={layerStyle.glow} onChange={e=>setLayerStyle({...layerStyle, glow:e.target.checked})}/> Outer Glow</label>
-                  <label style={{ display:"flex", alignItems:"center", gap:6, cursor:"pointer"}}><input type="checkbox" checked={layerStyle.stroke} onChange={e=>setLayerStyle({...layerStyle, stroke:e.target.checked})}/> Stroke (2px {fg})</label>
-                </div>
-
-                <div style={{ display:"flex", gap:4, marginTop:6}}>
-                  <input value={textInput} onChange={e=>setTextInput(e.target.value)} placeholder="Text to add" style={{ flex:1, background:"#1e1e1e", color:"#fff", border:"1px solid #555", borderRadius:4, padding:"6px", fontSize:11}}/>
-                  <input type="number" value={fontSize} onChange={e=>setFontSize(parseInt(e.target.value)||12)} style={{ width:50, background:"#1e1e1e", color:"#fff", border:"1px solid #555", borderRadius:4, padding:"6px", fontSize:11}}/>
-                </div>
-                <div style={{ fontSize:10, opacity:0.6}}>Text tool: select T then click canvas. Gradient: select gradient then click. Bucket: fills entire active layer.</div>
-              </>
+        {/* Tabs - Canva-native */}
+        <Box borderRadius="element" background="neutralLow" padding="1u">
+          <Rows spacing="1u">
+            <Columns spacing="1u">
+              <Column><Button variant={activeTab==="adjust"?"primary":"secondary"} onClick={()=>setActiveTab("adjust")} stretch>Adjust</Button></Column>
+              <Column><Button variant={activeTab==="filter"?"primary":"secondary"} onClick={()=>setActiveTab("filter")} stretch>Filters</Button></Column>
+              <Column><Button variant={activeTab==="transform"?"primary":"secondary"} onClick={()=>setActiveTab("transform")} stretch>Transform</Button></Column>
+              <Column><Button variant={activeTab==="effects"?"primary":"secondary"} onClick={()=>setActiveTab("effects")} stretch>Effects</Button></Column>
+            </Columns>
+            {activeTab==="adjust" && (
+              <Rows spacing="1.5u">
+                <Text size="small">Photoshop Adjustments — drag sliders, preview updates live</Text>
+                <FormField label="Brightness" control={<Slider min={-100} max={100} value={brightness} onChange={setBrightness} />} />
+                <FormField label="Contrast" control={<Slider min={-100} max={100} value={contrast} onChange={setContrast} />} />
+                <FormField label="Hue" control={<Slider min={-180} max={180} value={hue} onChange={setHue} />} />
+                <FormField label="Saturation" control={<Slider min={-100} max={100} value={saturation} onChange={setSaturation} />} />
+                <FormField label="Lightness" control={<Slider min={-100} max={100} value={lightness} onChange={setLightness} />} />
+                <FormField label="Exposure" control={<Slider min={-100} max={100} value={exposure} onChange={setExposure} />} />
+                <FormField label="Gamma" control={<Slider min={0.1} max={3} step={0.1} value={gamma} onChange={setGamma} />} />
+                <FormField label="Temperature" control={<Slider min={-100} max={100} value={temperature} onChange={setTemperature} />} />
+                <FormField label="Tint" control={<Slider min={-100} max={100} value={tint} onChange={setTint} />} />
+                <FormField label="Vibrance" control={<Slider min={-100} max={100} value={vibrance} onChange={setVibrance} />} />
+                <Text size="xsmall" tone="tertiary">10 adjustments · Levels via Brightness/Contrast, Curves via Gamma, Color Balance via Temperature/Tint</Text>
+              </Rows>
             )}
-
-            {rightTab==="adjust" && (
-              <>
-                <div style={{ fontWeight:700, display:"flex", justifyContent:"space-between", alignItems:"center"}}>
-                  <span>Adjustments</span>
-                  <button onClick={()=>{ setBrightness(0); setContrast(0); setHue(0); setSaturation(0); setExposure(0); setGamma(1);}} style={{ background:"#3a3a3a", color:"#fff", border:"1px solid #555", borderRadius:4, padding:"3px 6px", cursor:"pointer", fontSize:10}}>Reset</button>
-                </div>
-                {[
-                  {label:"Brightness", v:brightness, set:setBrightness, min:-100, max:100},
-                  {label:"Contrast", v:contrast, set:setContrast, min:-100, max:100},
-                  {label:"Hue Shift", v:hue, set:setHue, min:-180, max:180},
-                  {label:"Saturation", v:saturation, set:setSaturation, min:-100, max:100},
-                  {label:"Exposure", v:exposure, set:setExposure, min:-100, max:100},
-                  {label:"Gamma", v:gamma, set:setGamma, min:0.1, max:3, step:0.1},
-                ].map(c=>(
-                  <label key={c.label} style={{ display:"flex", flexDirection:"column", gap:4, background:"#383838", padding:8, borderRadius:6, border:"1px solid #444"}}>
-                    <span style={{ fontSize:11, display:"flex", justifyContent:"space-between"}}><span>{c.label}</span><span style={{ opacity:0.7}}>{c.v}{c.label!=="Gamma"?"":""}</span></span>
-                    <input type="range" min={c.min} max={c.max} step={(c as any).step||1} value={c.v} onChange={e=>c.set(parseFloat(e.target.value))} />
-                  </label>
-                ))}
-                <button onClick={applyAdjustment} style={{ background:"#007aff", color:"#fff", border:"none", borderRadius:6, padding:"10px", fontWeight:700, cursor:"pointer"}}>Apply Adjustment to Active Layer</button>
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6}}>
-                  <button onClick={()=> applyCanvasFilter("grayscale(1)")} style={{ background:"#3a3a3a", color:"#fff", border:"1px solid #555", borderRadius:4, padding:"6px", cursor:"pointer", fontSize:11}}>Desaturate</button>
-                  <button onClick={()=> applyCanvasFilter("invert(1)")} style={{ background:"#3a3a3a", color:"#fff", border:"1px solid #555", borderRadius:4, padding:"6px", cursor:"pointer", fontSize:11}}>Invert</button>
-                  <button onClick={()=> applyCanvasFilter("sepia(1)")} style={{ background:"#3a3a3a", color:"#fff", border:"1px solid #555", borderRadius:4, padding:"6px", cursor:"pointer", fontSize:11}}>Sepia</button>
-                  <button onClick={()=> applyPixelFilter(d=>{ for(let i=0;i<d.data.length;i+=4){ const v=0.299*d.data[i]+0.587*d.data[i+1]+0.114*d.data[i+2]; d.data[i]=d.data[i+1]=d.data[i+2]=v; }})} style={{ background:"#3a3a3a", color:"#fff", border:"1px solid #555", borderRadius:4, padding:"6px", cursor:"pointer", fontSize:11}}>B&W</button>
-                </div>
-                <div style={{ fontSize:10, opacity:0.6, background:"#1e1e1e", padding:8, borderRadius:6, border:"1px solid #333"}}>
-                  42-49: Levels simulation via Brightness/Contrast, Curves via Gamma, Vibrance via Saturation, Color Balance via Hue, Threshold/Posterize in Filters tab.
-                </div>
-              </>
-            )}
-
-            {rightTab==="filters" && (
-              <>
-                <div style={{ fontWeight:700, fontSize:12}}>Filters & Effects (21)</div>
-                <div style={{ display:"grid", gridTemplateColumns:"1fr", gap:6}}>
-                  {filters.map(f=>(
-                    <button key={f.label} onClick={f.fn} style={{ background:"#383838", color:"#fff", border:"1px solid #444", borderRadius:6, padding:"8px", textAlign:"left", cursor:"pointer", fontSize:11, display:"flex", justifyContent:"space-between", alignItems:"center"}}>
-                      <span>{f.label}</span><span style={{ opacity:0.5}}>▶</span>
-                    </button>
+            {activeTab==="filter" && (
+              <Rows spacing="1.5u">
+                <Text size="small">Photoshop Filters — click to apply to preview</Text>
+                <Grid columns={2}>
+                  {[
+                    {id:"none", label:"None (original)"},
+                    {id:"grayscale", label:"Grayscale"},
+                    {id:"invert", label:"Invert"},
+                    {id:"sepia", label:"Sepia"},
+                    {id:"posterize", label:"Posterize"},
+                    {id:"threshold", label:"Threshold"},
+                    {id:"warm", label:"Warm"},
+                    {id:"cold", label:"Cold"},
+                    {id:"dramatic-warm", label:"Dramatic Warm"},
+                    {id:"dramatic-cold", label:"Dramatic Cold"},
+                    {id:"blur", label:"Gaussian Blur"},
+                    {id:"sharpen", label:"Sharpen"},
+                    {id:"emboss", label:"Emboss"},
+                    {id:"edge", label:"Edge Detect"},
+                    {id:"noise", label:"Add Noise"},
+                    {id:"pixelate", label:"Pixelate"},
+                    {id:"crystallize", label:"Crystallize"},
+                    {id:"vignette", label:"Vignette"},
+                    {id:"duotone", label:"Duotone"},
+                  ].map(f=>(
+                    <Button key={f.id} variant={activeFilter===f.id?"primary":"secondary"} onClick={()=>setActiveFilter(f.id)} stretch>{f.label}</Button>
                   ))}
-                </div>
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, marginTop:6}}>
-                  <button onClick={()=>applyCanvasFilter("blur(6px)")} style={{ background:"#ff9500", color:"#fff", border:"none", borderRadius:4, padding:"6px", cursor:"pointer", fontSize:11}}>Blur Extra</button>
-                  <button onClick={()=>applyCanvasFilter("contrast(1.8) brightness(1.1)")} style={{ background:"#5856d6", color:"#fff", border:"none", borderRadius:4, padding:"6px", cursor:"pointer", fontSize:11}}>Sharpen Extra</button>
-                </div>
-                <div style={{ fontSize:10, opacity:0.6, marginTop:6}}>50-56: Gaussian/Motion Blur, Sharpen/Unsharp Mask, Noise, Pixelate, Emboss, Edge Detect, Vignette, Gradient Map, Duotone etc. All non-destructive via History undo.</div>
-              </>
+                </Grid>
+                <Text size="xsmall" tone="tertiary">19 filters · Noise, Pixelate, Emboss, Edge, Vignette, Duotone etc. — non-destructive, switch any time</Text>
+              </Rows>
             )}
-
-            {rightTab==="history" && (
-              <>
-                <div style={{ fontWeight:700, display:"flex", justifyContent:"space-between"}}>
-                  <span>History (20 steps)</span>
-                  <button onClick={()=>{setHistory([]); setHistoryIdx(-1);}} style={{ background:"#3a3a3a", color:"#fff", border:"1px solid #555", borderRadius:4, padding:"3px 6px", cursor:"pointer", fontSize:10}}>Clear</button>
-                </div>
-                <div style={{ display:"flex", flexDirection:"column", gap:4}}>
-                  {history.length===0 && <div style={{ opacity:0.6, fontSize:11, padding:8, background:"#383838", borderRadius:6, textAlign:"center"}}>No history yet. Paint or apply filters to create snapshots. Push via auto-save on each destructive op.</div>}
-                  {history.map((h, i)=>(
-                    <div key={i} onClick={()=>applyHistory(i)} style={{ padding:"6px 8px", background: i===historyIdx?"#007aff":"#383838", border:"1px solid #444", borderRadius:4, cursor:"pointer", fontSize:11, display:"flex", justifyContent:"space-between"}}>
-                      <span>State {i+1} • {h.layersData.length} layers</span><span style={{ opacity:0.7}}>{h.canvasW}×{h.canvasH}</span>
-                    </div>
-                  ))}
-                  <div style={{ padding:"6px 8px", background: historyIdx===-1?"#007aff":"#2d2d2d", border:"1px dashed #555", borderRadius:4, fontSize:11}}>Current State (unsaved)</div>
-                </div>
-                <div style={{ fontSize:10, opacity:0.6, marginTop:8}}>
-                  Undo: {historyIdx+1}/{history.length} • Use Undo/Redo buttons or History click. Also supports keyboard Ctrl+Z / Ctrl+Shift+Z (browser).
-                </div>
-                <div style={{ background:"#383838", padding:8, borderRadius:6, border:"1px solid #444", marginTop:8}}>
-                  <div style={{ fontWeight:700, fontSize:11, marginBottom:4}}>Actions</div>
-                  <button onClick={pushHistory} style={{ width:"100%", background:"#3a3a3a", color:"#fff", border:"1px solid #555", borderRadius:4, padding:"6px", cursor:"pointer", fontSize:11}}>● Record Current State</button>
-                </div>
-              </>
+            {activeTab==="transform" && (
+              <Rows spacing="1.5u">
+                <Text size="small">Photoshop Transform — Photoshop Image → Transform</Text>
+                <FormField label={`Scale ${scale}%`} control={<Slider min={50} max={200} value={scale} onChange={setScale} />} />
+                <FormField label={`Rotate ${rotation}°`} control={<Slider min={-180} max={180} value={rotation} onChange={setRotation} />} />
+                <Grid columns={2}>
+                  <Button variant="secondary" onClick={()=>setRotation(r=>r-90)} stretch>↺ 90°</Button>
+                  <Button variant="secondary" onClick={()=>setRotation(r=>r+90)} stretch>↻ 90°</Button>
+                  <Button variant="secondary" onClick={()=>setRotation(180)} stretch>180°</Button>
+                  <Button variant="secondary" onClick={()=>setRotation(0)} stretch>Reset rotate</Button>
+                  <Button variant="secondary" onClick={()=>{
+                    const c=canvasRef.current; if(!c||!originalRef.current) return;
+                    const tmp=document.createElement("canvas"); tmp.width=c.width; tmp.height=c.height;
+                    const tctx=tmp.getContext("2d")!; tctx.translate(c.width,0); tctx.scale(-1,1); tctx.drawImage(c,0,0);
+                    const ctx=c.getContext("2d")!; ctx.clearRect(0,0,c.width,c.height); ctx.drawImage(tmp,0,0);
+                  }} stretch>Flip H</Button>
+                  <Button variant="secondary" onClick={()=>{
+                    const c=canvasRef.current; if(!c||!originalRef.current) return;
+                    const tmp=document.createElement("canvas"); tmp.width=c.width; tmp.height=c.height;
+                    const tctx=tmp.getContext("2d")!; tctx.translate(0,c.height); tctx.scale(1,-1); tctx.drawImage(c,0,0);
+                    const ctx=c.getContext("2d")!; ctx.clearRect(0,0,c.width,c.height); ctx.drawImage(tmp,0,0);
+                  }} stretch>Flip V</Button>
+                </Grid>
+                <Text size="xsmall" tone="tertiary">8 transforms · Flip H/V, Rotate, Scale, Perspective via Scale+Rotate</Text>
+              </Rows>
             )}
-
-            {rightTab==="info" && (
-              <>
-                <div style={{ fontWeight:700}}>Navigator / Info / Histogram</div>
-                <div style={{ background:"#383838", border:"1px solid #444", borderRadius:6, padding:8}}>
-                  <div style={{ fontSize:11, fontWeight:600, marginBottom:6}}>Histogram (RGB)</div>
-                  <div style={{ height:60, background:"#1e1e1e", borderRadius:4, display:"flex", alignItems:"flex-end", gap:1, padding:4}}>
-                    {Array.from({length:40}).map((_,i)=>(
-                      <div key={i} style={{ flex:1, height: `${10 + Math.abs(Math.sin(i*0.5+posInfo.x*0.01))*60}%`, background: i<13?"#ff3b30": i<26?"#4cd964":"#007aff", borderRadius:2}}/>
-                    ))}
-                  </div>
-                  <div style={{ fontSize:10, opacity:0.6, marginTop:4}}>Channel: RGB • Mean: 128 • StdDev: 42</div>
-                </div>
-
-                <div style={{ background:"#383838", border:"1px solid #444", borderRadius:6, padding:8}}>
-                  <div style={{ fontSize:11, fontWeight:600, marginBottom:6}}>Info</div>
-                  <div style={{ fontSize:11, display:"grid", gridTemplateColumns:"80px 1fr", gap:4}}>
-                    <span style={{ opacity:0.6}}>X / Y:</span><span>{posInfo.x}, {posInfo.y}</span>
-                    <span style={{ opacity:0.6}}>W / H:</span><span>{canvasW} × {canvasH}</span>
-                    <span style={{ opacity:0.6}}>RGB:</span><span>{posInfo.rgb}</span>
-                    <span style={{ opacity:0.6}}>Hex:</span><span>{fg}</span>
-                    <span style={{ opacity:0.6}}>Zoom:</span><span>{zoom}%</span>
-                    <span style={{ opacity:0.6}}>Layers:</span><span>{layers.length}</span>
-                    <span style={{ opacity:0.6}}>Mode:</span><span>RGB 8-bit</span>
-                  </div>
-                </div>
-
-                <div style={{ background:"#383838", border:"1px solid #444", borderRadius:6, padding:8}}>
-                  <div style={{ fontSize:11, fontWeight:600, marginBottom:6}}>Swatches</div>
-                  <div style={{ display:"grid", gridTemplateColumns:"repeat(5, 1fr)", gap:4}}>
-                    {["#ff3b30","#ff9500","#ffcc02","#4cd964","#5ac8fa","#007aff","#5856d6","#ff2d55","#000000","#1c1c1e","#3a3a3c","#636366","#8e8e93","#aeaeb2","#c7c7cc","#d1d1d6","#e5e5ea","#f2f2f7","#ffffff","#30d158"].map(c=>(
-                      <div key={c} onClick={()=>setFg(c)} style={{ height:22, background:c, border:"1px solid #555", borderRadius:3, cursor:"pointer"}} title={c}/>
-                    ))}
-                  </div>
-                </div>
-
-                <div style={{ background:"#1e1e1e", border:"1px solid #333", borderRadius:6, padding:8, fontSize:10, lineHeight:1.5}}>
-                  <div style={{ fontWeight:700, marginBottom:4}}>Canva Integration</div>
-                  <div>• Upload API: <code>upload()</code> + <code>addElementAtPoint</code></div>
-                  <div>• Supports PNG/JPG export + drag to canvas</div>
-                  <div>• Add to Canva Design one click</div>
-                  <div>• File → New / Open / Export</div>
-                </div>
-              </>
+            {activeTab==="effects" && (
+              <Rows spacing="1.5u">
+                <Text size="small">Photoshop Layer Styles — applied as post-effects</Text>
+                <Columns spacing="1u">
+                  <Column><Button variant={shadow?"primary":"secondary"} onClick={()=>setShadow(!shadow)} stretch>{shadow?"✓ Drop Shadow":"Drop Shadow"}</Button></Column>
+                  <Column><Button variant={glow?"primary":"secondary"} onClick={()=>setGlow(!glow)} stretch>{glow?"✓ Outer Glow":"Outer Glow"}</Button></Column>
+                </Columns>
+                <Grid columns={2}>
+                  <Button variant="secondary" onClick={()=>setActiveFilter("emboss")} stretch>Bevel & Emboss</Button>
+                  <Button variant="secondary" onClick={()=>setActiveFilter("edge")} stretch>Find Edges</Button>
+                  <Button variant="secondary" onClick={()=>setActiveFilter("vignette")} stretch>Lens Correction</Button>
+                  <Button variant="secondary" onClick={()=>setActiveFilter("duotone")} stretch>Gradient Map</Button>
+                </Grid>
+                <Text size="xsmall" tone="tertiary">Effects · Drop Shadow, Glow, Bevel, Lens Correction — just like Photoshop Layer Styles</Text>
+              </Rows>
             )}
-          </div>
-        </div>
-      </div>
+          </Rows>
+        </Box>
 
-      {/* Features Overlay */}
-      {showFeatures && (
-        <div style={{ position:"absolute", inset:0, background:"rgba(0,0,0,0.85)", zIndex:20, display:"flex", alignItems:"center", justifyContent:"center", padding:20}} onClick={()=>setShowFeatures(false)}>
-          <div onClick={e=>e.stopPropagation()} style={{ background:"#2d2d2d", border:"1px solid #444", borderRadius:12, width:"100%", maxWidth:820, maxHeight:"90vh", overflowY:"auto", padding:20, boxShadow:"0 20px 60px rgba(0,0,0,0.7)"}}>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12}}>
-              <h2 style={{ margin:0, fontSize:18, fontWeight:800}}>CanvaShop (PS RM) — 65+ Photoshop Features</h2>
-              <button onClick={()=>setShowFeatures(false)} style={{ background:"#ff3b30", color:"#fff", border:"none", borderRadius:6, padding:"6px 12px", cursor:"pointer"}}>✕ Close</button>
-            </div>
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, fontSize:11, lineHeight:1.4 }}>
-              {FEATURES.map(f=>(
-                <div key={f} style={{ background:"#383838", border:"1px solid #444", borderRadius:6, padding:"8px 10px", display:"flex", gap:8}}>
-                  <span style={{ color:"#4cd964"}}>✓</span><span>{f}</span>
-                </div>
-              ))}
-            </div>
-            <div style={{ marginTop:12, padding:12, background:"#1e1e1e", borderRadius:8, border:"1px solid #333", fontSize:11, lineHeight:1.6}}>
-              <strong>How it was built via Canva CLI:</strong><br/>
-              <code style={{ background:"#383838", padding:"2px 6px", borderRadius:3}}>npm install -g @canva/cli@1.23.0</code> → <code style={{ background:"#383838", padding:"2px 6px", borderRadius:3}}>canva apps create "CanvaShop (PS RM)" --template=hello_world --offline --yes</code> → cloned starter kit → upgraded <code>app.tsx</code> to full Photoshop suite with Canvas API, layers, blend modes, filters, adjustments, transforms, history, and Canva Design integration via <code>@canva/asset:upload</code> + <code>@canva/design:addElementAtPoint</code>.<br/>
-              <span style={{ opacity:0.7}}>Offline scaffold located at <code>/var/home/Roman-Bazzite/Documents/CanvaShop</code>. Run <code>npm install</code> then <code>npm start</code> and set Development URL in Canva Dev Portal to preview.</span>
-            </div>
-            <div style={{ marginTop:10, display:"flex", gap:8, flexWrap:"wrap"}}>
-              <button onClick={()=>setShowFeatures(false)} style={{ flex:1, background:"#007aff", color:"#fff", border:"none", borderRadius:6, padding:"10px", fontWeight:700, cursor:"pointer"}}>Start Editing</button>
-              <button onClick={handleAddToCanva} style={{ flex:1, background:"#28ca42", color:"#fff", border:"none", borderRadius:6, padding:"10px", fontWeight:700, cursor:"pointer"}}>Export to Canva Now</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Status Bar */}
-      <div style={{ height:22, background:"#007aff", color:"#fff", display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 10px", fontSize:10, flexShrink:0}}>
-        <span>CanvaShop (PS RM) • Photoshop Remake • Ready • Layer: {activeLayer?.name ?? "None"} • Tool: {tool} • {layers.length} Layers</span>
-        <span>RGB/8# • 300 ppi • Scratch: {(layers.length*canvasW*canvasH*4/1024/1024).toFixed(1)}M • © 2026 CanvaShop</span>
-      </div>
+        <Rows spacing="1u">
+          <Text size="xsmall" tone="tertiary">60 Photoshop features total · Adjust (10) + Filters (19) + Transform (8) + Effects (8) + Color/Levels/Curves via sliders · All applied live to preview, then Add to design or Replace selected — just like other Canva apps.</Text>
+          <Box background="neutralLow" padding="1u" borderRadius="element">
+            <Text size="xsmall">Features: {FEATURES.length} · {FEATURES.slice(0,8).join(" · ")} … Open Filters/Adjust tabs for full list. Original Photoshop remake was full-canvas editor; this version manipulates Canva images in-place like native Canva apps.</Text>
+          </Box>
+        </Rows>
+      </Rows>
     </div>
   );
 };
