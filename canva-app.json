@@ -1,0 +1,32 @@
+{
+  "$schema": "https://www.canva.dev/schemas/app/v1/manifest-schema.json",
+  "manifest_schema_version": 1,
+  "app_name": "CanvaShop (PS RM)",
+  "title": "CanvaShop (PS RM)",
+  "description": "Photoshop remake with 50+ professional editing features",
+  "runtime": {
+    "permissions": [
+      {
+        "name": "canva:design:content:read",
+        "type": "mandatory"
+      },
+      {
+        "name": "canva:design:content:write",
+        "type": "mandatory"
+      },
+      {
+        "name": "canva:asset:upload",
+        "type": "mandatory"
+      },
+      {
+        "name": "canva:user:content:read",
+        "type": "optional"
+      }
+    ]
+  },
+  "intent": {
+    "design_editor": {
+      "enrolled": true
+    }
+  }
+}
